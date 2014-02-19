@@ -1,0 +1,61 @@
+application: e~mr-predict      # http://mr-predict.appspot.com/
+version: 2
+runtime: python27
+threadsafe: true
+api_version: 1
+
+builtins:
+- django_wsgi: on
+- remote_api: on
+- deferred: on
+
+handlers:
+- url: /stylesheets
+  static_dir: static/stylesheets
+  
+- url: /static
+  static_dir: static/html
+  
+- url: /partials
+  static_dir: static/partials
+  
+- url: /images
+  static_dir: static/images
+  
+- url: /js
+  static_dir: static/js
+  
+- url: /favicon\.ico
+  static_files: static/images/favicon.ico
+  upload: static/images/favicon\.ico
+  
+- url: /bootstrap-js
+  static_dir: static/bootstrap/dist/js
+  
+- url: /bootstrap-css
+  static_dir: static/bootstrap/dist/css
+  
+- url: /fonts
+  static_dir: static/bootstrap/dist/fonts
+
+- url: /import/(.*)
+  script: main.app
+  login: optional
+  secure: optional
+  
+- url: /factory/(.*)
+  script: main.app
+  login: optional
+  secure: optional
+  
+- url: .*
+  script: main.app
+  login: required
+  secure: optional
+
+libraries:
+- name: jinja2
+  version: "latest"
+- name: webapp2
+  version: "latest"
+  

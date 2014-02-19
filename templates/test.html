@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Test Page{% endblock %}
+
+{% block content %}
+    <h5>Test</h5>
+    <div data-ng-controller="TrainingPhaseController">
+    {{ data }}<br/>
+    {% raw %}{{ messageFromServer }}{% endraw %}
+    </div>
+{% endblock %}

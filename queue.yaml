@@ -1,0 +1,13 @@
+total_storage_limit: 1G
+
+queue:
+
+- name: default
+  rate: 1/s
+
+- name: blob-import
+  rate: 1/s
+  max_concurrent_requests: 20
+  
+- name: decision-tree-factory
+  rate: 10/s

@@ -1,0 +1,8 @@
+This app accesses Google Drive services.
+
+In order for that to work, the webapp admin has to properly setup the client secrets:
+https://cloud.google.com/console
+
+In particular the OAuth2 callback URI has to be added to the relevant list!
+
+

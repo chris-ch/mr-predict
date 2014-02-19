@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Main Page{% endblock %}
+
+{% block content %}
+{% raw %}
+    <div data-ng-controller="TrainingPhaseController">
+    
+        <div class="row">
+        <div class="col-md-9">
+        <div class="panel panel-default">
+          <!-- Default panel contents -->
+          <div class="panel-heading">Available contexts</div>
+          <div class="panel-body" data-ng-show="loadingContexts">
+            <strong>Loading contexts...</strong>
+          </div>
+          <div class="panel-body" data-ng-hide="loadingContexts">
+            <p>The following contexts are available for running a training phase</p>
+        
+              <!-- Contexts -->
+              <table class="table">
+               <tr><th>Name</th><th># Measures</th><th>Source</th></tr>
+               <tr data-ng-repeat="context in contexts">
+               <td><a href="" data-ng-click="train(context.name)" data-ng-bind="context.name"></a></td>
+               <td><span class="badge">{{context.measures_count}}</span></td>
+               <td data-ng-bind="context.source"></td>
+               <td><a href="" data-ng-click="deleteContext($index)"><span class="glyphicon glyphicon-remove"></span></a></td>
+               </tr>
+              </table>
+          </div>
+          
+          </div>
+        </div>
+        </div>
+        <div class="row">
+        <div class="col-md-9">
+            <alert
+                type="success"
+                close="trainingStatus = ''"
+                data-ng-show="trainingStatus"
+                >
+                <span data-ng-bind="trainingStatus"></span>
+            </alert>
+        </div>
+        </div>
+        
+        <div class="row">
+        <div class="col-md-6">
+            <div data-ng-show="loadingUploadedFiles">
+            <strong>Listing uploaded files...</strong>
+            </div>
+            <div class="list-group" data-ng-hide="loadingUploadedFiles">
+              <a  class="list-group-item active">
+                Click on an available file below to select it for training
+              </a>
+              <a href=""
+                class="list-group-item"
+                data-ng-click="createContext(file)"
+                data-ng-repeat="file in uploadedFiles"
+                >
+                {{file.title}} <span class="badge">{{ file.size | filesize }}</span>
+              </a>
+              <div
+                class="list-group-item"
+                >
+                <div ng-controller="BlobStoreUploadController">
+                    <p>Add an item by selecting a file on your local drive:</p>
+                    <input type="file" data-ng-file-select="onFileSelect($files)" >
+                    <alert
+                        type="success"
+                        close="progressionPct = 0"
+                        data-ng-show="progressionPct"
+                        >
+                        <span>Completion: {{progressionPct}} %</span>
+                    </alert>
+                </div>
+              </div>
+            </div>
+        </div>
+        </div>
+        
+        <div class="row">
+        <div class="col-md-6">
+            <div data-ng-show="loadingGDriveFiles">
+            <strong>Loading CSV files available on Google Drive...</strong>
+            </div>
+            <div class="list-group" data-ng-hide="loadingGDriveFiles">
+              <a  class="list-group-item active">
+                Click on a training set below to start loading it from Google Drive
+              </a>
+              <a href=""
+                class="list-group-item"
+                data-ng-click="driveImport(file)"
+                data-ng-repeat="file in gDriveFiles"
+                data-ng-bind="file.title"
+                >
+              </a>
+            </div>
+        </div>
+        </div>
+        
+        <div class="row">
+        <div class="col-md-6">
+            <alert
+                type="success"
+                close="gDriveActivityMessage = ''"
+                data-ng-show="gDriveActivityMessage"
+                >
+                <span data-ng-bind="gDriveActivityMessage"></span>
+            </alert>
+        </div>
+        </div>
+        
+    </div>
+{% endraw %}
+{% endblock %}
+

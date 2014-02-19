@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Granting Drive Access{% endblock %}
+
+{% block content %}
+    {% if has_credentials %}
+        <p>Thanks for having granted us permission, {{ user }}.</p>
+        <p>Please <a href="/predict">proceed to the main
+        application</a>.</p>
+        <p><a href="{{ logout|safe }}">logout</a> </p>
+      
+    {% else %}
+    <p><a href="{{ url|safe }}">Grant</a> this application permission to access your
+    Google Drive information. <b>Read-only</b> access is required.</p>
+    {% endif %}
+    <p>You can always <a
+      href="https://www.google.com/accounts/b/0/IssuedAuthSubTokens">revoke</a>
+    permission at any time.</p>
+{% endblock %}
+
