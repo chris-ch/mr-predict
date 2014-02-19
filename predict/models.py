@@ -28,12 +28,12 @@ class TrainingContext(ndb.Model):
         
     @classmethod
     def clear(cls, context):
-        measures = Measure.query(Measure.context == context.key)
-        for measure in measures:
-            measure.key.delete()
-            
         samples = Sample.query(Sample.context == context.key)
         for sample in samples:
+            measures = Measure.query(Measure.sample == sample.key)
+            for measure in measures:
+                measure.key.delete()
+                
             sample.key.delete()
             
         dimensions = Dimension.query(Dimension.context == context.key)
@@ -48,20 +48,21 @@ class TrainingContext(ndb.Model):
         context.put()
         
     def add_dimension(self, name):
-        new_dimension = Dimension(name=name, context=self.key)
-        new_dimension_key = new_dimension.put()
-        self.dimensions_count += 1
-        self.put()
-        return new_dimension_key
+        return self.add_dimension([name])[0]
+        
+    def add_dimensions(self, names):
+        dimensions = list()
+        for name in names:
+            new_dimension = Dimension(name=name, context=self.key)
+            dimensions.append(new_dimension)
+            self.dimensions_count += 1
+        
+        ndb.put_multi(dimensions)
+        return dimensions
         
     def csv_import_header(self, csv_reader):
-        dimensions = list()
-        for column in next(csv_reader)[1:]:
-            _LOG.info('creating dimension "%s"' % str(column))
-            new_dimension_key = self.add_dimension(column)
-            dimensions.append(new_dimension_key)
-            
-        return dimensions
+        header = next(csv_reader)
+        return self.add_dimensions([column for column in header[1:]])
         
     def csv_import(self, csv_reader, dimensions):
         counter = 0
@@ -74,11 +75,11 @@ class TrainingContext(ndb.Model):
             counter += 1
             if counter % 100 == 0:
                 _LOG.info('%d rows processed' % counter)
-        for sample in samples:
-            sample.put()
-            
-        for measure in measures:
-            measure.put()
+                
+        self.measures_count += len(measures)
+        ndb.put_multi(samples)
+        ndb.put_multi(measures)
+        self.put()
        
 class Dimension(ndb.Model):
     """
@@ -99,29 +100,28 @@ class Dimension(ndb.Model):
         return context.add_dimension(name)
 
 def save_row(row, context_key, dimensions):
-            sample_id = row[0]
-            new_sample = Sample(context=context_key, name=sample_id)
-            measures = save_measures(new_sample, dimensions, row[1:])
-            return (new_sample, measures)
+    sample_id = row[0]
+    sample_key = ndb.Key(Sample, sample_id, parent=context_key)
+    new_sample = Sample(key=sample_key, context=context_key, name=sample_id)
+    measures = save_measures(new_sample.key, dimensions, row[1:])
+    return (new_sample, measures)
 
-def save_measures(sample, dimensions, row):
-        context = self.context.get()
-        new_measures = list()
-        for count, cell in enumerate(row):
-            try:
-                value = float(cell)
-                new_measure = Measure(context=self.context,
-                    dimension=dimensions[count],
-                    sample=self.key,
-                    value=value
-                    )
-                new_measures.append(new_measure)
-                context.measures_count += 1
-                
-            except ValueError:
-                _LOG.debug('failed to convert value "%s" (ignoring)' % cell)
-                
-        return measures
+def save_measures(sample_key, dimensions, row):
+    new_measures = list()
+    for count, cell in enumerate(row):
+        try:
+            value = float(cell)
+            new_measure = Measure(
+                dimension=dimensions[count].key,
+                sample=sample_key,
+                value=value
+                )
+            new_measures.append(new_measure)
+            
+        except ValueError:
+            _LOG.debug('failed to convert value "%s" (ignoring)' % cell)
+            
+    return new_measures
 
 class Sample(ndb.Model):
     """
@@ -140,7 +140,6 @@ class Sample(ndb.Model):
         self.add_measures([dimension_key], [value])
 
 class Measure(ndb.Model):
-    context = ndb.KeyProperty(kind='TrainingContext', required=True)
     value = ndb.FloatProperty(indexed=False)
     dimension = ndb.KeyProperty(kind='Dimension', required=True)
     sample = ndb.KeyProperty(kind='Sample', required=True)

@@ -68,8 +68,8 @@ class TrainingContext(ndb.Model):
         samples = list()
         measures = list()
         for row in csv_reader:
-            (new_samples, new_measures) = save_row(row, self.key, dimensions)
-            samples += new_samples
+            (new_sample, new_measures) = save_row(row, self.key, dimensions)
+            samples.append(new_sample)
             measures += new_measures
             counter += 1
             if counter % 100 == 0:
