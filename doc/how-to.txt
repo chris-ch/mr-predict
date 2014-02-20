@@ -1,0 +1,13 @@
+Required edits
+--------------
+
+The following files need to be customized. Places requiring edition are marked with a <PLEASE EDIT> tag.
+
+config.py:
+
+- secret key (can be generated using script indicated in comments)
+- endpoint client ID
+
+client_secrets.json:
+- whole file
+
