@@ -13,7 +13,7 @@ restricted_auth = None  # 'admin:admin'
 # >>> ''.join([f() for f in keygen])
 webapp2_config = {
     'webapp2_extras.sessions': {
-        'secret_key': '4FB4AAA8D7828282B62848F78B55C4E9D352B51558FA27BAA7B9246A31ED2065'
+        'secret_key': '<PLEASE EDIT>'
     },
 }
 
@@ -32,4 +32,4 @@ rate_limit = None
 # Create your CLIENT_ID at
 # https://code.google.com/apis/console
 # make sure to add http://localhost:8080 if thats what you will test it on
-endpoints_client_id = '677872569875.apps.googleusercontent.com'
+endpoints_client_id = '<PLEASE EDIT>'
