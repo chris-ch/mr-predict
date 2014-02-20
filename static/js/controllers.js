@@ -4,17 +4,12 @@ angular.module('predict.controllers', [])
 
 .controller('TrainingPhaseController',
     ['$scope', 'predict.services.PredictRPCService',
-    function($scope, predictService) {
+        'predict.factories.BlobManager',
+    function($scope, predictService, blobManager) {
         
+        $scope.uploadedFiles = blobManager.availableFiles;
+                
         function init(){
-            $scope.loadingUploadedFiles = true;
-            predictService.listAvailableFiles()
-            .then(function(uploadedFiles){
-                console.log('uploadedFiles files', uploadedFiles);
-                $scope.loadingUploadedFiles = false;
-                $scope.uploadedFiles = uploadedFiles;
-            }
-            );
             $scope.loadingGDriveFiles = true;
             predictService.loadFileNames()
             .then(function(gDriveFiles){
@@ -46,9 +41,10 @@ angular.module('predict.controllers', [])
             predictService.createContext(file.key)
             .then(function(status){
                 console.log('created context for file', file.key);
-            });
+                }
+                );
             console.log('creating context for file', file.key);
-        }
+        };
         
         $scope.deleteContext = function(index){
             predictService.deleteContext($scope.contexts[index].name)
@@ -70,35 +66,44 @@ angular.module('predict.controllers', [])
 ])
 
 .controller('BlobStoreUploadController',
-[ '$scope', '$upload', '$window', 'predict.services.PredictRPCService',
-function($scope, $upload, $window, predictService) {
+[ '$scope', '$upload', '$window', 'predict.factories.BlobManager',
+function($scope, $upload, $window, blobManager) {
     $scope.onFileSelect = function($files) {
+        // uses a file manager service
+        
         //$files: an array of files selected, each file has name, size, and type.
-        predictService.blobStoreUploadUrl()
-            .then(function(blobStoreUploadUrl){
-                for (var i = 0; i < $files.length; i++) {
-                  var file = $files[i];
-                  $scope.upload = $upload.upload({
-                    url: blobStoreUploadUrl,
-                    // method: POST or PUT,
-                    // headers: {'headerKey': 'headerValue'},
-                    // withCredentials: true,
-                    data: {'myObj': $scope.myModelObj},
-                    file: file,
-                  }).progress(function(evt) {
-                      var progressionPct = parseInt(100.0 * evt.loaded / evt.total)
-                      $scope.progressionPct = progressionPct;
-                  }).success(function(data, status, headers, config) {
-                    // file is uploaded successfully
-                    console.log('uploaded with status:', status);
-                  });
-                  //.error(...)
-                  //.then(success, error, progress); 
-                }
-            });
+        blobManager.uploadUrl()
+        .then(function(blobStoreUploadUrl){
+            for (var i = 0; i < $files.length; i++) {
+              var file = $files[i];
+              $scope.upload = $upload.upload({
+                url: blobStoreUploadUrl,
+                // method: POST or PUT,
+                // headers: {'headerKey': 'headerValue'},
+                // withCredentials: true,
+                data: {'myObj': $scope.myModelObj},
+                file: file,
+              }).progress(function(evt) {
+                  var progressionPct = parseInt(100.0 * evt.loaded / evt.total)
+                  $scope.progressionPct = progressionPct;
+              }).success(function(data, status, headers, config) {
+                // file is uploaded successfully
+                console.log('uploaded with status:', status);
+                console.log('file list', blobManager.availableFiles);
+                blobManager.updateFilesList().then(
+                    function () {
+                        console.log('file list after', blobManager.availableFiles);
+                    }
+                );
+                console.log('file list before', blobManager.availableFiles);
+              });
+              //.error(...)
+              //.then(success, error, progress); 
+            }
+        });
     };
 }
-]);
+])
 
 ;
 

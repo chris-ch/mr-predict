@@ -45,7 +45,8 @@ class ApiHandler(RpcHandler):
                     'size': item.size,
                     'key': str(item.key()),
             })
-            _LOG.info('available file: %s' % str(metadata))
+        
+        _LOG.info('available file: %s' % str(metadata))
             
         return metadata
             

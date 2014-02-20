@@ -30,10 +30,6 @@ class TrainingContext(ndb.Model):
     def clear(cls, context):
         samples = Sample.query(Sample.context == context.key)
         for sample in samples:
-            measures = Measure.query(Measure.sample == sample.key)
-            for measure in measures:
-                measure.key.delete()
-                
             sample.key.delete()
             
         dimensions = Dimension.query(Dimension.context == context.key)
@@ -47,14 +43,10 @@ class TrainingContext(ndb.Model):
         context = cls(name=name, source_filename=source_filename)
         context.put()
         
-    def add_dimension(self, name):
-        return self.add_dimension([name])[0]
-        
     def add_dimensions(self, names):
         dimensions = list()
         for name in names:
-            new_dimension = Dimension(name=name, context=self.key)
-            dimensions.append(new_dimension)
+            dimensions.append(Dimension.make(name, context_key=self.key))
             self.dimensions_count += 1
         
         ndb.put_multi(dimensions)
@@ -67,55 +59,64 @@ class TrainingContext(ndb.Model):
     def csv_import(self, csv_reader, dimensions):
         counter = 0
         samples = list()
-        measures = list()
+        measures = 0
         for row in csv_reader:
-            (new_sample, new_measures) = save_row(row, self.key, dimensions)
+            new_sample = create_row(row, self.key, dimensions)
             samples.append(new_sample)
-            measures += new_measures
             counter += 1
             if counter % 100 == 0:
                 _LOG.info('%d rows processed' % counter)
+            
+            measures += len(new_sample.measures)
+            self.measures_count += len(new_sample.measures)
                 
-        self.measures_count += len(measures)
+        _LOG.info('saving a total of %d elements' % measures)
         ndb.put_multi(samples)
-        ndb.put_multi(measures)
         self.put()
        
 class Dimension(ndb.Model):
     """
     Represents one characteristic of a profile.
     """
-    context = ndb.KeyProperty(kind='TrainingContext', required=True)
-    name = ndb.TextProperty(required=True, indexed=True)
+    name = ndb.StringProperty(required=True)
+    context = ndb.KeyProperty(kind=TrainingContext)
     
     @classmethod
-    def get_or_create(cls, name, context=None):
-        """
-        Makes sure a default context is created if required
-        """
-        if not context:
-            context_key = TrainingContext.get_or_create(name='unspecified')
-            context = context_key.get()
-            
-        return context.add_dimension(name)
+    def make(cls, name, context_key):
+        new_dimension = Dimension(name=name, context=context_key)
+        return new_dimension
+        
+class Measure(ndb.Model):
+    
+    value = ndb.FloatProperty()
+    dimension = ndb.KeyProperty(kind=Dimension, repeated=False)
 
-def save_row(row, context_key, dimensions):
+class Sample(ndb.Model):
+    """
+    Represents one profile in the training universe.
+    """
+    sample_id = ndb.StringProperty(required=True)
+    context = ndb.KeyProperty(kind=TrainingContext)
+    measures = ndb.StructuredProperty(Measure, repeated=True)
+    
+    @classmethod
+    def make(cls, sample_id, context_key):
+        new_sample = Sample(sample_id=sample_id, context=context_key)
+        return new_sample
+        
+def create_row(row, context_key, dimensions):
     sample_id = row[0]
-    sample_key = ndb.Key(Sample, sample_id, parent=context_key)
-    new_sample = Sample(key=sample_key, context=context_key, name=sample_id)
-    measures = save_measures(new_sample.key, dimensions, row[1:])
-    return (new_sample, measures)
+    new_sample = Sample.make(sample_id, context_key)
+    measures = create_measures(dimensions, row[1:])
+    new_sample.measures = measures
+    return new_sample
 
-def save_measures(sample_key, dimensions, row):
+def create_measures(dimensions, row):
     new_measures = list()
     for count, cell in enumerate(row):
         try:
             value = float(cell)
-            new_measure = Measure(
-                dimension=dimensions[count].key,
-                sample=sample_key,
-                value=value
-                )
+            new_measure = Measure(value=value, dimension=dimensions[count].key)
             new_measures.append(new_measure)
             
         except ValueError:
@@ -123,24 +124,3 @@ def save_measures(sample_key, dimensions, row):
             
     return new_measures
 
-class Sample(ndb.Model):
-    """
-    Represents one profile in the training universe.
-    """
-    context = ndb.KeyProperty(kind='TrainingContext')
-    name = ndb.TextProperty(indexed=False)
-    
-    def add_measures(self, dimensions, values):
-        context = self.context.get()
-        new_measures = save_measures(self, dimensions, values)
-        ndb.put_multi(new_measures)
-        context.put() # updates counters
-    
-    def add_measure(self, dimension_key, value):
-        self.add_measures([dimension_key], [value])
-
-class Measure(ndb.Model):
-    value = ndb.FloatProperty(indexed=False)
-    dimension = ndb.KeyProperty(kind='Dimension', required=True)
-    sample = ndb.KeyProperty(kind='Sample', required=True)
-    

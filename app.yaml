@@ -1,4 +1,4 @@
-application: e~mr-predict      # http://mr-predict.appspot.com/
+application: mr-predict      # http://mr-predict.appspot.com/
 version: 2
 runtime: python27
 threadsafe: true
