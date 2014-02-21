@@ -7,10 +7,13 @@ angular.module('predict.controllers', [])
         'predict.factories.BlobManager',
         'predict.factories.ContextManager',
         'predict.factories.GoogleDriveManager',
+        'predict.services.PredictRPCService',
     function($scope, $interval,
         blobManager,
         contextManager,
-        driveManager) {
+        driveManager,
+        predictService
+        ) {
         
         $scope.uploadedFiles = blobManager.availableFiles;
         $scope.contexts = contextManager.availableContexts;
@@ -35,9 +38,9 @@ angular.module('predict.controllers', [])
         $scope.driveImport = function(file){
             console.log('importing', file);
             $scope.gDriveActivityMessage = 'Processing data...';
-            predictService.driveImport(file.title, file.downloadUrl)
+            driveManager.importFile(file)
             .then(function(status){
-                console.log('finished training set', file);
+                console.log('launched gdrive import', file);
             });
         }
         

@@ -38,6 +38,9 @@ function(predictService){
     
     var instance = {
         files: _driveFiles,
+        importFile: function (file) {
+            return predictService.driveImport(file.title, file.downloadUrl);
+        },
         loadAll: function () {
             var update = predictService.loadFileNames()
             .then(function(gDriveFiles){
