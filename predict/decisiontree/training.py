@@ -1,6 +1,9 @@
 #
 # -*- coding: utf-8 -*-
 #
+import logging
+_LOG = logging.getLogger('training')
+
 import random
 from collections import defaultdict
 
@@ -109,13 +112,20 @@ class NDBTrainingSet(object):
         """
         assert len(self.samples) > 0, 'Trying to compute mean of an empty set'
         total = 0
-        return total / len(self.items)
+        for sample_key in self.samples:
+            sample = sample_key.get()
+            _LOG.info('test %s' % str(sample.measures[dimension]))
+            for measure in sample.measures:
+                if measure.dimension == dimension:
+                    total += measure.value
+                    
+        return total / len(self.samples)
     
-    def variance(self, attr):
+    def variance(self, dimension):
         """Compute the variance of the set of values of an attribute."""
-        assert len(self.items) > 0, 'Trying to compute variance of an empty set'
-        totsq = float(sum([row[attr]**2 for row in self.items.itervalues()]))
-        return totsq / len(self.items) - self.mean(attr)**2
+        assert len(self.samples) > 0, 'Trying to compute variance of an empty set'
+        totsq = sum([row[dimension]**2 for row in self.samples.itervalues()])
+        return float(totsq) / len(self.samples) - self.mean(dimension)**2
 
     def sample_rows(self, sample_size):
         """Sample table rows uniformly at random."""

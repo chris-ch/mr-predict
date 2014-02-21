@@ -69,8 +69,9 @@ class DecisionTreeFactoryWorker(webapp2.RequestHandler):
         ts.start()
         dimensions = ts.get_dimensions()
         dimension = dimensions[0]
-        _LOG.info('dimension: %s' % str(dimension))
-        _LOG.info('mean: %s' % str(ts.mean(dimensions)))
+        _LOG.info('dimension: %s --> %s' % (str(dimension), str(dimension.get().name)))
+        _LOG.info('mean: %s' % str(ts.mean(dimension)))
+        _LOG.info('variance: %s' % str(ts.variance(dimension)))
             
         _LOG.info('--------- tree factory completed')
     
