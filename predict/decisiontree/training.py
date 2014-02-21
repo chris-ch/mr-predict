@@ -4,6 +4,8 @@
 import random
 from collections import defaultdict
 
+from predict import models
+
 class TrainingSetFactory(object):
     
     def train_x_y(self, func, count, range_x, range_y,
@@ -39,6 +41,85 @@ class TrainingSetFactory(object):
             loc_table.insert(log_data)
         
         return loc_table
+
+
+class NDBTrainingSet(object):
+    
+    """
+        Interface to NDB
+    """
+    def __init__(self, context):
+        self._context = context
+        self._dimensions = None
+ 
+    def get_dimensions(self):
+        """Gets all attributes."""
+        if not self._dimensions:
+            self._dimensions = models.Dimension.query(
+                models.Dimension.context == self._context.key
+                ).fetch(keys_only=True)
+            
+        return self._dimensions
+    
+    def count(self):
+        """Count the number of rows in the table."""
+        return len(self.items)
+
+    def count_not_null(self, attr):
+        """Count the number of rows in the table."""
+        return len([item for item in self.items.itervalues() if item[attr] is not None])
+
+    def mean(self, attr):
+        """Compute the mean of all (real) values of an attribute."""
+        assert len(self.items) > 0, 'Trying to compute mean of an empty set'
+        total = float(sum([row[attr] for row in self.items.itervalues()]))
+        return total / len(self.items)
+    
+    def variance(self, attr):
+        """Compute the variance of the set of values of an attribute."""
+        assert len(self.items) > 0, 'Trying to compute variance of an empty set'
+        totsq = float(sum([row[attr]**2 for row in self.items.itervalues()]))
+        return totsq / len(self.items) - self.mean(attr)**2
+
+    def sample_rows(self, sample_size):
+        """Sample table rows uniformly at random."""
+        assert len(self.items) > 0, 'Trying to sample an empty table'
+        return [self.items[random.randint(0, len(self.items) - 1)]
+                for i in range(sample_size)]
+    
+    def sample_measures(self, dimension, sample_size):
+        """
+        Samples uniformly at random from the set of values of a dimension.
+
+        @param dimension: the dimension
+        @param sample_size: number of values to sample
+
+        """
+        return [row[dimension] for row in self.sample_rows(sample_size)]
+
+    def split(self, dimension, split_val):
+        """Split according to a given dimension and a split value.
+        Returns a 3-uple of tables: one for values <= split_val, one for
+        values > split_val and one for undef values of the dimension.
+
+        dimension -- dimension to split on
+        split_val -- split value
+
+        """
+        left_table = TrainingSet()
+        right_table = TrainingSet()
+        null_table = TrainingSet()
+        for entry in self.items.itervalues():
+            if not dimension in entry.keys():
+                null_table.insert(entry)
+                
+            elif entry[dimension] <= split_val:
+                left_table.insert(entry)
+                
+            else:
+                right_table.insert(entry)
+                
+        return left_table, right_table, null_table
 
 class TrainingSet(object):
     

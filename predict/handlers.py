@@ -58,12 +58,15 @@ class BlobImportWorker(webapp2.RequestHandler):
 class DecisionTreeFactoryWorker(webapp2.RequestHandler):
     
     def post(self):
+        from predict.decisiontree.training import NDBTrainingSet
         _LOG.info('--------- started tree factory')
         user_id = self.request.get('user_id')
         context_name = self.request.get('context_name')
         context = models.TrainingContext.query(
             models.TrainingContext.user_id == user_id, 
             models.TrainingContext.name == context_name).get()
+        ts = NDBTrainingSet(context)
+        _LOG.info('dimensions: %s' % ts.get_dimensions())
         _LOG.info('--------- tree factory completed')
     
 class MainHandler(webapp2.RequestHandler):

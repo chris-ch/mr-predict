@@ -88,7 +88,7 @@ class Dimension(ndb.Model):
         
 class Measure(ndb.Model):
     
-    value = ndb.FloatProperty()
+    value = ndb.FloatProperty(required=True, indexed=False)
     dimension = ndb.KeyProperty(kind=Dimension, repeated=False)
 
 class Sample(ndb.Model):
