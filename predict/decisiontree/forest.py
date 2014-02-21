@@ -49,6 +49,13 @@ class RandomForest(object):
         for i in range(trees_count):
             tree = factory.create()
             self.trees.append(tree)
+        
+    def json(self):
+        return json.dumps([tree.json() for tree in self.trees], cls=TreeJSONEncoder)
+        
+    def persist(self):
+        import cPickle
+        return cPickle.dumps([tree for tree in self.trees])
 
     def predict(self, inst):
         """Predict the regressand for a new instance."""
@@ -62,6 +69,22 @@ class RandomForest(object):
             s += os.linesep + as_string(self.target, self.table, root) + os.linesep
             
         return s
+        
+class TreeJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (LeafDecisionNode,)):
+            return { 'value': obj.leaf_value }
+            
+        elif isinstance(obj, (DecisionNode,)):
+            output = {
+                'split_dimension': obj.split_dimension,
+                'split_value': obj.split_value,
+                'left_node': obj.left_node,
+                'right_node': obj.right_node,
+            }
+            return output
+            
+        return json.JSONEncoder.default(self, obj)
         
         
 def as_string(target, table, node, depth=0):

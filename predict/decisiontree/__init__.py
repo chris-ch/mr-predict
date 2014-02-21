@@ -5,6 +5,7 @@ import logging
 import random
 import os
 import abc
+import json
 
 _LOG = logging.getLogger('regression')
 
@@ -125,7 +126,7 @@ class DimensionSplit(object):
         self.left_table = left_table
         self.right_table = right_table
         self.null_table = null_table
-        
+
 class BaseDecisionNode(object):
     __metaclass__ = abc.ABCMeta
     
@@ -146,7 +147,7 @@ class BaseDecisionNode(object):
             
         else:
             return self.right_node.predict(sample)
-
+                    
 class LeafDecisionNode(BaseDecisionNode):
     
     def __init__(self, leaf_value):
@@ -180,4 +181,5 @@ class DecisionNode(BaseDecisionNode):
     def is_leaf(self):
         """ Marker for leaves"""
         return False
+        
         

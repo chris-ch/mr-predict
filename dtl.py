@@ -65,32 +65,6 @@ if __name__ == '__main__':
             range_x, range_y, target_name='target', missing_rate=0.1)
     forest = RandomForest(data, 'target')
     forest.grow_trees(30)
-    print
-    graph = TextGraph(-1.5, -1.0, 1.5, 1.0, 100, 50)
-    
-    for inst in data.items.keys():
-        output = data.items[inst]['target']
-        x = data.items[inst]['x']
-        y = data.items[inst]['y']
-        if output > 0.0:
-            if x and y: graph.plot(x, y, 3)
-            
-        else:
-            if x and y: graph.plot(x, y, 2)
-    
-    print graph.draw()
-    graph.clean()
-    print
-    def compute_forest(x, y, f=forest):
-        return (0.0, 1.0)[f.predict({'x': x, 'y': y}) > 0.5]
-    
-    graph.add_func(oblique_rectangle_func)
-    print graph.draw()
-    graph.clean()
-    print
-    graph.add_func(compute_forest)
-    print graph.draw()
-    print
-    """print data.to_csv()"""
+    print forest.persist()
     
     
