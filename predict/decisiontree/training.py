@@ -4,6 +4,8 @@
 import random
 from collections import defaultdict
 
+from google.appengine.ext import ndb
+
 from predict import models
 
 class TrainingSetFactory(object):
@@ -46,14 +48,29 @@ class TrainingSetFactory(object):
 class NDBTrainingSet(object):
     
     """
-        Interface to NDB
+        Interfacing NDB
     """
     def __init__(self, context):
         self._context = context
         self._dimensions = None
- 
+        self._samples = list()
+        
+    def start(self):
+        """
+        Starts with full samples set.
+        """
+        self._samples = (models.Sample.query(
+                models.Sample.context == self._context.key
+                ).fetch(keys_only=True)
+                )
+        
+    def insert(self, sample):
+        self._samples.append(sample)
+            
     def get_dimensions(self):
-        """Gets all attributes."""
+        """
+        Gets all dimensions.
+        """
         if not self._dimensions:
             self._dimensions = models.Dimension.query(
                 models.Dimension.context == self._context.key
@@ -61,23 +78,37 @@ class NDBTrainingSet(object):
             
         return self._dimensions
     
+    @property
+    def samples(self):
+        return self._samples
+    
     def count(self):
         """
         Total number of samples
         """
-        return self._context.samples_count
+        return len(self.samples)
 
     def count_not_null(self, dimension):
         """
         Number of samples having a specific attribute filled in
         """
-        count = models.Measure.query(models.Measure.dimension == dimension).count()
+        if len(self.samples) == 0:
+            return 0
+            
+        count = models.Sample.query(
+            ndb.AND(
+                models.Sample.measures.dimension == dimension,
+                models.Sample.key.IN(self.samples)
+                )
+            ).count()
         return count
 
-    def mean(self, attr):
-        """Compute the mean of all (real) values of an attribute."""
-        assert len(self.items) > 0, 'Trying to compute mean of an empty set'
-        total = float(sum([row[attr] for row in self.items.itervalues()]))
+    def mean(self, dimension):
+        """
+        Mean value across a specific dimension.
+        """
+        assert len(self.samples) > 0, 'Trying to compute mean of an empty set'
+        total = 0
         return total / len(self.items)
     
     def variance(self, attr):
