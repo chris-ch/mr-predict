@@ -66,7 +66,12 @@ class DecisionTreeFactoryWorker(webapp2.RequestHandler):
             models.TrainingContext.user_id == user_id, 
             models.TrainingContext.name == context_name).get()
         ts = NDBTrainingSet(context)
-        _LOG.info('dimensions: %s' % ts.get_dimensions())
+        dimensions = ts.get_dimensions()
+        for dimension in dimensions:
+            count = ts.count_not_null(dimension)
+            if count > 0:
+                _LOG.info('count %s = %s' % (dimension, count))
+            
         _LOG.info('--------- tree factory completed')
     
 class MainHandler(webapp2.RequestHandler):

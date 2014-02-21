@@ -14,6 +14,7 @@ class TrainingContext(ndb.Model):
     name = ndb.StringProperty(required=True)
     source_filename = ndb.StringProperty()
     measures_count = ndb.IntegerProperty(required=True, default=0)
+    samples_count = ndb.IntegerProperty(required=True, default=0)
     dimensions_count = ndb.IntegerProperty(required=True, default=0)
     
     @classmethod
@@ -69,6 +70,7 @@ class TrainingContext(ndb.Model):
             
             measures += len(new_sample.measures)
             self.measures_count += len(new_sample.measures)
+            self.samples_count += 1
                 
         _LOG.info('saving a total of %d elements' % measures)
         ndb.put_multi(samples)

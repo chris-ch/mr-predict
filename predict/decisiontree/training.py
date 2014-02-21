@@ -62,12 +62,17 @@ class NDBTrainingSet(object):
         return self._dimensions
     
     def count(self):
-        """Count the number of rows in the table."""
-        return len(self.items)
+        """
+        Total number of samples
+        """
+        return self._context.samples_count
 
-    def count_not_null(self, attr):
-        """Count the number of rows in the table."""
-        return len([item for item in self.items.itervalues() if item[attr] is not None])
+    def count_not_null(self, dimension):
+        """
+        Number of samples having a specific attribute filled in
+        """
+        count = models.Measure.query(models.Measure.dimension == dimension).count()
+        return count
 
     def mean(self, attr):
         """Compute the mean of all (real) values of an attribute."""
