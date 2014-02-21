@@ -52,7 +52,7 @@ class ApiHandler(RpcHandler):
             
     def create_context(self, blob_key):
         """
-        Returns a list of files available in the Blobstore
+        Creates a context using the indicated Blob file.
         """
         _LOG.info('creating context for key %s' % str(blob_key))
         user_id = users.get_current_user().user_id()

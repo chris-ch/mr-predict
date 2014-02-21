@@ -3,55 +3,33 @@
 angular.module('predict.controllers', [])
 
 .controller('TrainingPhaseController',
-    ['$scope', 'predict.services.PredictRPCService',
+    ['$scope', '$interval',
         'predict.factories.BlobManager',
-    function($scope, predictService, blobManager) {
+        'predict.factories.ContextManager',
+        'predict.factories.GoogleDriveManager',
+    function($scope, $interval,
+        blobManager,
+        contextManager,
+        driveManager) {
         
         $scope.uploadedFiles = blobManager.availableFiles;
+        $scope.contexts = contextManager.availableContexts;
+        $scope.gDriveFiles = driveManager.files;
+        
+        /*var infoRefresher = $interval(function(){
+                blobManager.updateFilesList();
+            }, 60 * 1000);
+        
+        $scope.$on('$destroy', function(e) {
+                $interval.cancel(infoRefresher);
+        });*/
                 
-        function init(){
-            $scope.loadingGDriveFiles = true;
-            predictService.loadFileNames()
-            .then(function(gDriveFiles){
-                console.log('loaded gDrive files', gDriveFiles);
-                $scope.loadingGDriveFiles = false;
-                $scope.gDriveFiles = gDriveFiles;
-            }
-            );
-            $scope.loadingContexts = true;
-            predictService.loadContexts()
-            .then(function(contexts){
-                console.log('loaded contexts', contexts);
-                $scope.loadingContexts = false;
-                $scope.contexts = contexts;
-            }
-            );
-        }
-        init();
-        
-        $scope.train = function(contextName){
-            predictService.train(contextName)
-            .then(function(status){
-                console.log('running...');
-                $scope.trainingStatus = 'Processing data...';
-            });
-        }
-        
         $scope.createContext = function(file){
-            predictService.createContext(file.key)
-            .then(function(status){
-                console.log('created context for file', file.key);
-                }
-                );
-            console.log('creating context for file', file.key);
+            contextManager.create(file);
         };
         
         $scope.deleteContext = function(index){
-            predictService.deleteContext($scope.contexts[index].name)
-            .then(function(status){
-                console.log('finished deleting context', $scope.contexts[index].name);
-                $scope.contexts.splice(index, 1);
-            });
+            contextManager.remove(index);
         }
         
         $scope.driveImport = function(file){
@@ -62,6 +40,15 @@ angular.module('predict.controllers', [])
                 console.log('finished training set', file);
             });
         }
+        
+        $scope.train = function(contextName){
+            predictService.train(contextName)
+            .then(function(status){
+                console.log('running...');
+                $scope.trainingStatus = 'Processing data...';
+            });
+        }
+        
     }
 ])
 
@@ -88,14 +75,6 @@ function($scope, $upload, $window, blobManager) {
                   $scope.progressionPct = progressionPct;
               }).success(function(data, status, headers, config) {
                 // file is uploaded successfully
-                console.log('uploaded with status:', status);
-                console.log('file list', blobManager.availableFiles);
-                blobManager.updateFilesList().then(
-                    function () {
-                        console.log('file list after', blobManager.availableFiles);
-                    }
-                );
-                console.log('file list before', blobManager.availableFiles);
               });
               //.error(...)
               //.then(success, error, progress); 
