@@ -7,6 +7,7 @@ from webapp2_extras.appengine.users import login_required
 from google.appengine.api import users
 from google.appengine.api import memcache
 from google.appengine.api import taskqueue
+from google.appengine.ext import ndb
 from google.appengine.ext import blobstore
 from google.appengine.ext.webapp import blobstore_handlers
 
@@ -43,15 +44,13 @@ class BlobImportWorker(webapp2.RequestHandler):
         import csv
         user_id = self.request.get('user_id')
         blob_key = self.request.get('blob_key')
-        
         item = blobstore.BlobInfo.get(blobstore.BlobKey(blob_key))
         content = item.open()
-        
         new_name = models.TrainingContext.find_new_name(user_id)
         new_context = models.TrainingContext(name=new_name, user_id=user_id)
         new_context.source_filename = item.filename
         new_context_key = new_context.put()
-        reader = csv.reader(content, delimiter=',')               
+        reader = csv.reader(content, delimiter=',')   
         dimensions = new_context.csv_import_header(reader)
         new_context.csv_import(reader, dimensions)
         content.close()
