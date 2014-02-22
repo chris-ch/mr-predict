@@ -24,14 +24,15 @@ class DecisionTreeFactory(object):
         @param samples_split_size: number of values to sample when considering a new split on a dimension
         @param dimension_significance_threshold: ratio of non-null values considered as significant in a given dimension
         """
+        assert target in table.get_dimensions(), 'target column "%s" is missing in input dataset' % target
         self.table = table
         self.exclude = exclude
         self.target = target
         self.min_items_count = min_items_count
         self.min_variance_gain = min_variance_gain
         self.samples_split_size = samples_split_size
-        self.dimensions = [attr for attr in self.table.get_dimensions()
-                      if attr != self.target and attr not in self.exclude]
+        self.dimensions = [dim for dim in self.table.get_dimensions()
+                      if dim != self.target and dim not in self.exclude]
         self.dimensions_split_size = min(int(inclusion_ratio * len(self.dimensions)), 1)
         self.dimension_significance_threshold = dimension_significance_threshold
 

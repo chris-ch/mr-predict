@@ -14,16 +14,16 @@ class RandomForest(object):
                  split_sampling=42,
                  dimension_significance_threshold=0.5
                  ):
-        """Prepares forest for training phase:
+        """
+        Prepares forest for the training phase.
 
-        table -- complete training set
-        target -- attribute to learn
-        attr_frac -- fraction of attributes to use for splitting
-        exclude -- list of attributes to exclude from learning
-        min_count -- threshold for leaf size
-        min_gain -- minimum gain in variance for splitting
-        split_sampling -- number of values to sample when considering
-                          a new split on an attribute
+        @param table: complete training set
+        @param target: attribute to learn
+        @param attr_frac: fraction of attributes to use for splitting
+        @param exclude: list of attributes to exclude from learning
+        @param min_count: threshold for leaf size
+        @param min_gain: minimum gain in variance for splitting
+        @param split_sampling: number of values to sample when considering a new split on an attribute
 
         """
         self.table = table
