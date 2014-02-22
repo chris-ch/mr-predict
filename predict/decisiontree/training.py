@@ -89,17 +89,19 @@ class TrainingSet(object):
         return self._dimensions
 
     def count(self):
-        """Count the number of rows in the table."""
+        """Counts the number of rows in the table."""
         return len(self.items)
 
-    def count_not_null(self, attr):
-        """Count the number of rows in the table."""
-        return len([item for item in self.items.itervalues() if item[attr] is not None])
+    def count_not_null(self, dim):
+        """Counts the number of rows in the table."""
+        return len([item for item in self.items.itervalues() if item[dim] is not None])
 
-    def mean(self, attr):
-        """Compute the mean of all (real) values of an attribute."""
+    def mean(self, dim):
+        """
+        Computes the mean for a dimension
+        """
         assert len(self.items) > 0, 'Trying to compute mean of an empty set'
-        values = [row[attr] for row in self.items.itervalues() if row[attr] is not None]
+        values = [row[dim] for row in self.items.itervalues() if row[dim] is not None]
         if len(values) == 0:
             return None
 
@@ -111,7 +113,7 @@ class TrainingSet(object):
         assert len(self.items) > 0, 'Trying to compute variance of an empty set'
         values = [row[attr]**2 for row in self.items.itervalues() if row[attr] is not None]
         if len(values) == 0:
-            return 0.0
+            return None
 
         totsq = float(sum(values))
         return totsq / len(values) - self.mean(attr)**2

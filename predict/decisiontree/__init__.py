@@ -53,6 +53,7 @@ class DecisionTreeFactory(object):
             if len(significant_dimensions) == 0:
                 leaf_value = table.mean(self.target)
                 node = LeafDecisionNode(leaf_value)
+                
             else:    
                 best_split, best_dimension, best_value = self._select_split(significant_dimensions, table)
                 gain = 1. - best_split.exp_var / table.variance(self.target)
@@ -61,13 +62,18 @@ class DecisionTreeFactory(object):
                     node = LeafDecisionNode(leaf_value)
                     
                 else:
-                    left_node = self._load_node(best_split.left_table)
-                    right_node = self._load_node(best_split.right_table)
-                    node = DecisionNode(split_value=best_value,
-                            split_dimension=best_dimension,
-                            left_node=left_node,
-                            right_node=right_node
-                            )
+                    if best_split.left_table.count() == 0 or best_split.right_table.count() == 0:
+                    	leaf_value = table.mean(self.target)
+                    	node = LeafDecisionNode(leaf_value)
+                    	
+                    else:
+	                    left_node = self._load_node(best_split.left_table)
+	                    right_node = self._load_node(best_split.right_table)
+	                    node = DecisionNode(split_value=best_value,
+	                            split_dimension=best_dimension,
+	                            left_node=left_node,
+	                            right_node=right_node
+	                            )
 
         return node
 
