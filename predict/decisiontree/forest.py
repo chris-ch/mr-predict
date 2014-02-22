@@ -1,18 +1,20 @@
 #
 # -*- coding: utf-8 -*-
 #
+import json
+
 from . import DecisionTreeFactory
 from training import TrainingSet
 
 class RandomForest(object):
     """Random Forest built from bagging regression trees."""
-
-    def __init__(self, table, target, inclusion_ratio=.75,
+   
+    def set_training_data(self, table, target, inclusion_ratio=.75,
                  exclude=[], min_count=5, min_gain=None,
                  split_sampling=42,
                  dimension_significance_threshold=0.5
                  ):
-        """Builds a new decision tree
+        """Prepares forest for training phase:
 
         table -- complete training set
         target -- attribute to learn
@@ -32,7 +34,6 @@ class RandomForest(object):
         self.min_gain = min_gain
         self.split_sampling = split_sampling
         self.dimension_significance_threshold = dimension_significance_threshold
-
         self.target = target
         self.trees = []
 
@@ -49,18 +50,32 @@ class RandomForest(object):
         for i in range(trees_count):
             tree = factory.create()
             self.trees.append(tree)
-        
+            
+    def use_trees(self, trees):
+        self.trees = trees
+    
     def json(self):
         return json.dumps([tree.json() for tree in self.trees], cls=TreeJSONEncoder)
         
-    def persist(self):
+    def serialize(self, output):
         import cPickle
-        return cPickle.dumps([tree for tree in self.trees])
+        cPickle.dump([tree for tree in self.trees], output)
 
-    def predict(self, inst):
-        """Predict the regressand for a new instance."""
-        s = sum([tree.predict(inst) for tree in self.trees])
-        return float(s) / len(self.trees)
+    def predict(self, sample):
+        """
+        Predicts the regressand for a new sample
+        """
+        predictions = list()
+        for tree in self.trees:
+            prediction = tree.predict(sample)
+            if prediction is not None:
+                predictions.append(prediction)
+        
+        if len(predictions) == 0:
+            return None
+            
+        s = sum(predictions)
+        return float(s) / len(predictions)
 
     def __str__(self):
         import os

@@ -138,15 +138,19 @@ class BaseDecisionNode(object):
     
     def predict(self, sample):
         """Predicts the regressand value for sample"""
-        # TODO: unknown attributes
         if self.is_leaf():
             return self.leaf_value
-            
-        elif sample[self.split_dimension] <= self.split_value:
-            return self.left_node.predict(sample)
-            
+        
         else:
-            return self.right_node.predict(sample)
+            if sample.has_key(self.split_dimension):
+                if sample[self.split_dimension] <= self.split_value:
+                    return self.left_node.predict(sample)
+                    
+                else:
+                    return None
+            
+            else:
+                return self.right_node.predict(sample)
                     
 class LeafDecisionNode(BaseDecisionNode):
     

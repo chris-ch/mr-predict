@@ -9,6 +9,26 @@ from collections import defaultdict
 
 class TrainingSetFactory(object):
     
+    def train_csv(self, input_file, target_name='target'):
+        import csv
+        ts = TrainingSet()
+        input_data = csv.reader(input_file, delimiter=',')
+        header = next(input_data)[1:]
+        for columns in input_data:
+            row = {}
+            for index, cell in enumerate(columns[1:]):
+                try:
+                    row[header[index]] = float(cell)
+                    
+                except ValueError:
+                    # fine, simply ignore
+                    pass
+            
+            _LOG.debug('inserting %s' % str(row))
+            ts.insert(row)
+            
+        return ts
+    
     def train_x_y(self, func, count, range_x, range_y,
             target_name='target', missing_rate=0.0):
         """
@@ -127,36 +147,27 @@ class TrainingSet(object):
                 
         return left_table, right_table, null_table
 
-    def to_csv(self, csv_file=None):
+    def to_csv(self, csv_file, selected=None, excluded=None):
         """
         Careful, that can be huge...
-        If provided, fills in the file with the training data in csv format, 
-        otherwise returns the csv as a string
         """
-        as_string = False
-        if csv_file is None:
-            as_string = True
-            from StringIO import StringIO
-            csv_file = StringIO()
-            
         import csv
-        field_names = ['id'] + self.get_dimensions()
+        dimensions = list()
+        for dim in self.get_dimensions():
+            if (selected is None or dim == selected) and dim != excluded:
+                dimensions.append(dim)
+            
+        field_names = ['id'] + dimensions
         csv_writer = csv.DictWriter(csv_file, fieldnames=field_names, dialect='excel')
         csv_writer.writeheader()
         for item_id in self.items:
             row_data = dict()
             row_data['id'] = item_id
-            for dim in self.get_dimensions():
+            for dim in dimensions:
                 row_data[dim] = self.items[item_id][dim]
                 
             csv_writer.writerow(row_data)
         
-        value = None
-        if as_string:
-            value = csv_file.getvalue()
-            
-        csv_file.close()        
-        return value
 
     def __str__(self):
         return self.to_csv()
