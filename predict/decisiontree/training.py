@@ -104,8 +104,9 @@ class TrainingSet(object):
     def variance(self, attr):
         """Compute the variance of the set of values of an attribute."""
         assert len(self.items) > 0, 'Trying to compute variance of an empty set'
-        totsq = float(sum([row[attr]**2 for row in self.items.itervalues()]))
-        return totsq / len(self.items) - self.mean(attr)**2
+        values = [row[attr]**2 for row in self.items.itervalues() if row[attr] is not None]
+        totsq = float(sum(values))
+        return totsq / len(values) - self.mean(attr)**2
 
     def sample_rows(self, sample_size):
         """Sample table rows uniformly at random."""
