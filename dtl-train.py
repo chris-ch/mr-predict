@@ -48,7 +48,7 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('csv_input_file',
         type=argparse.FileType('r'),
-        help='CSV file (including header) with list of training samples. First column serves as id for the sample')
+        help='CSV file (including header) with list of training samples. First column serves as id for the samples')
 
     parser.add_argument('-o', '--output',
         type=str,
