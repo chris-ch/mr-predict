@@ -1,7 +1,6 @@
 import random
 import argparse
 import csv
-
 from predict.decisiontree.training import TrainingSetFactory
 
 def file_len(f):
@@ -29,6 +28,9 @@ def main(args):
     headers = first_line[1:]
     index_target = headers.index(args.target_column)
     id_column = first_line[0]
+    training_file.write(','.join(first_line) + '\n')
+    output_file.write(','.join([id_column] + [column for column in headers if column != args.target_column]) + '\n')
+    check_file.write(','.join([first_line[0], args.target_column]) + '\n')
     for index, row in enumerate(input_rows):
         if index in leftovers:
             # this becomes a test sample
@@ -36,14 +38,14 @@ def main(args):
             values = [column for count, column in enumerate(columns)
                 if count != index_target]
 
-            output_file.write(','.join(values))
+            output_file.write(','.join([row[0]] + values) + '\n')
 
             # cross-checks
-            check_file.write(','.join([row[0], columns[index_target]]))
+            check_file.write(','.join([row[0], columns[index_target]]) + '\n')
 
         else:
             # this becomes a training sample
-            training_file.write(','.join(row))
+            training_file.write(','.join(row) + '\n')
 
     output_file.close()
     check_file.close()
