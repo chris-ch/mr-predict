@@ -186,4 +186,3 @@ class DecisionNode(BaseDecisionNode):
         """ Marker for leaves"""
         return False
         
-        
