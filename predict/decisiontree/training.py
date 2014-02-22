@@ -98,8 +98,12 @@ class TrainingSet(object):
     def mean(self, attr):
         """Compute the mean of all (real) values of an attribute."""
         assert len(self.items) > 0, 'Trying to compute mean of an empty set'
-        total = float(sum([row[attr] for row in self.items.itervalues()]))
-        return total / len(self.items)
+        values = [row[attr] for row in self.items.itervalues() if row[attr] is not None]
+        if len(values) == 0:
+            return None
+
+        total = float(sum(values))
+        return total / len(values)
     
     def variance(self, attr):
         """Compute the variance of the set of values of an attribute."""
