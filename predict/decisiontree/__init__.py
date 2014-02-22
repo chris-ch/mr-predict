@@ -186,8 +186,3 @@ class DecisionNode(BaseDecisionNode):
         """ Marker for leaves"""
         return False
         
-<<<<<<< HEAD
-        
-
-=======
->>>>>>> dd33e3f5ddd9ee976991fd78acc23a8a97774e93
