@@ -74,8 +74,7 @@ class RandomForest(object):
         if len(predictions) == 0:
             return None
             
-        s = sum(predictions)
-        return float(s) / len(predictions)
+        return float(sum(predictions)) / len(predictions)
 
     def __str__(self):
         import os

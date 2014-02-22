@@ -147,10 +147,10 @@ class BaseDecisionNode(object):
                     return self.left_node.predict(sample)
                     
                 else:
-                    return None
+                    return self.right_node.predict(sample)
             
             else:
-                return self.right_node.predict(sample)
+                return None
                     
 class LeafDecisionNode(BaseDecisionNode):
     
