@@ -74,7 +74,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
     main(args)
 
-<<<<<<< HEAD
-
-=======
->>>>>>> dd33e3f5ddd9ee976991fd78acc23a8a97774e93
