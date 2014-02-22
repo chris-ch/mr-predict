@@ -67,8 +67,7 @@ def main(args):
             for ref_row, res_row in izip(ref_rows, res_rows):
                 ref_value = float(ref_row[1])
                 samples_count += 1
-                if res_row[1] not in ('None', '', 'NA'):
-                    print res_row[1]
+                if res_row[1] not in ('None', '', 'NA'):                    
                     res_value = round(float(res_row[1]))
                     errors_count += (0, 1)[abs(ref_value - res_value) != 0.0]
 
