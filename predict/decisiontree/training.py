@@ -105,6 +105,9 @@ class TrainingSet(object):
         """Compute the variance of the set of values of an attribute."""
         assert len(self.items) > 0, 'Trying to compute variance of an empty set'
         values = [row[attr]**2 for row in self.items.itervalues() if row[attr] is not None]
+        if len(values) == 0:
+            return 0.0
+            
         totsq = float(sum(values))
         return totsq / len(values) - self.mean(attr)**2
 
