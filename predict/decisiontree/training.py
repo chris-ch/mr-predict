@@ -74,6 +74,8 @@ class TrainingSet(object):
     def __init__(self):
         self._dimensions = list()
         self.items = dict()
+        # caching
+        self._list_not_null = dict()
         self._statistics = dict()
 
     def insert(self, entry):
@@ -95,16 +97,28 @@ class TrainingSet(object):
 
     def count_not_null(self, dim):
         """Counts the number of rows in the table."""
-        return len([item for item in self.items.itervalues() if item[dim] is not None])
+        return len(self.list_not_null(dim))
+
+    def list_not_null(self, dim):
+        """
+        Sorted list of non null values for a specific dimension.
+        """
+        if not self._list_not_null.has_key(dim):
+            self._list_not_null[dim] = [item[dim] for item in self.items.itervalues()
+                                        if item[dim] is not None]
+            self._list_not_null[dim].sort()
+            
+        return self._list_not_null[dim]
 
     def median(self, dim):
         """
         Computes the median for a dimension
         """
-        assert len(self.items) > 0, 'Trying to compute median of an empty set'
+        assert len(self.items) > 0, 'no median for an empty set'
         return self.statistics(dim)[2]
 
     def variance(self, dim):
+        assert len(self.items) > 0, 'no variance for an empty set'
         return self.statistics(dim)[1]
 
     def statistics(self, dim):
@@ -115,24 +129,21 @@ class TrainingSet(object):
         if not self._statistics.has_key(dim):
             total = 0.0
             total_squares = 0.0
-            values = list()
-            for row in self.items.itervalues():
-                if row[dim] is not None:
-                    total += row[dim]
-                    total_squares += row[dim]**2
-                    values.append(row[dim])
-                
+            values = self.list_not_null(dim)
             if len(values) == 0:
                 return (None, None, None)
-    
-            values.sort()
+                
+            for value in values:
+                total += value
+                total_squares += value**2
+                
             median = None
             if len(values) & 1:
                 # odd number of items
                 median = values[len(values) / 2]
                 
             else:
-                #even number of items
+                # even number of items
                 median = 0.5 * (values[len(values) / 2 - 1] + values[len(values) / 2])
             
             mean = float(total) / len(values)
