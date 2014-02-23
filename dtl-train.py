@@ -31,34 +31,46 @@ def config_logging(level):
     logger.addHandler(ch)
 
 def main(args):
-    import multiprocessing as mp
     import cPickle
-    workers_count = 2
+    workers_count = args.multiprocessing
     
-    mp.log_to_stderr(logging.INFO)
-    logger = mp.get_logger()
-    pool = mp.Pool(processes=workers_count)
-    forests = list()
-    def gather_trees(tree_serial, f=forests):
-        tree = cPickle.loads(tree_serial)
-        forest = RandomForest()
-        forest.trees = [tree]
-        forests.append(forest)
-    
-    pool_status = list()
-    for index in range(args.number_trees):
-        status = pool.apply_async(create_tree,
-                (args.log_level, args.csv_input_file, args.target_column),
-                callback=gather_trees)
-        pool_status.append(status)
+    if workers_count:
+        import multiprocessing as mp
+        mp.log_to_stderr(logging.INFO)
+        logger = mp.get_logger()
+        pool = mp.Pool(processes=workers_count)
+        forests = list()
+        def gather_trees(tree_serial, f=forests):
+            tree = cPickle.loads(tree_serial)
+            forest = RandomForest()
+            forest.trees = [tree]
+            forests.append(forest)
         
-    for s in pool_status:
-        # this is only for forcing the display of any error ...
-        # would go unnoticed otherwise!
-        s.get()
-    
-    pool.close()
-    pool.join()
+        pool_status = list()
+        for index in range(args.number_trees):
+            status = pool.apply_async(create_tree,
+                    (args.log_level, args.csv_input_file, args.target_column),
+                    callback=gather_trees)
+            pool_status.append(status)
+            
+        for s in pool_status:
+            # this is only for forcing the display of any error ...
+            # would go unnoticed otherwise!
+            s.get()
+        
+        pool.close()
+        pool.join()
+        
+    else:
+        # Single processor
+        factory = TrainingSetFactory()
+        forests = None
+        with open(args.csv_input_file, 'r') as input_file:
+            data = factory.train_csv(input_file, target_name=args.target_column)
+            forest = RandomForest()
+            forest.set_training_data(data, args.target_column)
+            forest.grow_trees(args.number_trees)
+            forests = [forest]
     
     with open(args.output, 'wb') as output_file:
         serialize_forests(forests, output_file)
@@ -104,8 +116,12 @@ if __name__ == '__main__':
 
     parser.add_argument('-n', '--number-trees',
         type=int,
-        default=30,
+        default=32,
         help='number of trees to grow')
+
+    parser.add_argument('-m', '--multiprocessing',
+        type=int,
+        help='splits the work using local processors')
 
     parser.add_argument('-l', '--log-level',
         type=str,
