@@ -1,4 +1,5 @@
 import random
+import logging
 import argparse
 import csv
 from predict.decisiontree.training import TrainingSetFactory
@@ -26,12 +27,16 @@ def main(args):
     input_rows = csv.reader(input_file)
     first_line = next(input_rows)
     headers = first_line[1:]
+    expected_row_size = len(first_line)
     index_target = headers.index(args.target_column)
     id_column = first_line[0]
     training_file.write(','.join(first_line) + '\n')
     output_file.write(','.join([id_column] + [column for column in headers if column != args.target_column]) + '\n')
     check_file.write(','.join([first_line[0], args.target_column]) + '\n')
     for index, row in enumerate(input_rows):
+    	if len(row) != expected_row_size:
+    		logging.warning('ignoring row with unexpected size: %d (expected %d)' % (len(row), expected_row_size))
+    		continue
         if index in leftovers:
             # this becomes a test sample
             columns = row[1:]
