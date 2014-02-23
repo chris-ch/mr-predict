@@ -59,7 +59,7 @@ def main(args):
             # Also note that side-effect of setting a timeout is that
             # it works around python's bug when processes are interrupted
             # (they would hang otherwise forcing to kill -9...)
-            s.get(10 * 60)
+            s.get(args.timeout_min * 60)
         
         pool.close()
         pool.join()
@@ -125,6 +125,11 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--multiprocessing',
         type=int,
         help='splits the work using local processors')
+
+    parser.add_argument('-f', '--timeout-min',
+        type=int,
+        default=600,
+        help='forces processors to stop after tiemout in minutes')
 
     parser.add_argument('-s', '--split-sampling',
         type=int,
