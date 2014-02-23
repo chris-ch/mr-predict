@@ -5,7 +5,6 @@ import logging
 import random
 import os
 import abc
-import json
 
 _LOG = logging.getLogger('regression')
 
@@ -140,7 +139,6 @@ class BaseDecisionNode(object):
     @abc.abstractmethod
     def is_leaf(self):
         """ Marker for leaves"""
-        return
         return self.left_node == None or self.right_node == None
     
     def predict(self, sample):
@@ -158,7 +156,7 @@ class BaseDecisionNode(object):
             
             else:
                 return None
-                    
+         
 class LeafDecisionNode(BaseDecisionNode):
     
     def __init__(self, leaf_value):

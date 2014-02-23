@@ -5,6 +5,7 @@ import os
 import sys
 import logging
 import argparse
+import multiprocessing
 
 from predict.decisiontree.forest import RandomForest
 from predict.decisiontree.forest import serialize_forests
@@ -29,48 +30,66 @@ def config_logging(level):
     # add ch to logger
     logger.addHandler(ch)
 
-def task(x):
-    task.q.put('Doing: ' + str(x))
-    return x*x
-
-def task_init(q):
-    task.q = q
-
 def main(args):
-    forest = create_forest(args.log_level, args.csv_input_file, args.target_column, args.number_trees)
-    with open(args.output, 'wb') as output_file:
-        serialize_forests([forest], output_file)
+    import multiprocessing as mp
+    import cPickle
+    workers_count = 2
+    
+    mp.log_to_stderr(logging.INFO)
+    logger = mp.get_logger()
+    pool = mp.Pool(processes=workers_count)
+    forests = list()
+    def gather_trees(tree_serial, f=forests):
+        tree = cPickle.loads(tree_serial)
+        forest = RandomForest()
+        forest.trees = [tree]
+        forests.append(forest)
+    
+    pool_status = list()
+    for index in range(args.number_trees):
+        status = pool.apply_async(create_tree,
+                (args.log_level, args.csv_input_file, args.target_column),
+                callback=gather_trees)
+        pool_status.append(status)
         
-    #import multiprocessing as mp
-    #jobs = range(1,6)
-    #
-    #q = mp.Queue()
-    #p = mp.Pool(processes=4, initializer=task_init, initargs=[q])
-    #results = p.imap(task, jobs)
-    #p.close()
-    #
-    #for i in range(len(jobs)):
-    #    print q.get()
-    #    print results.next()
-
-def create_forest(log_level, csv_input_file, target_column, number_trees):
-    config_logging(log_level)
+    for s in pool_status:
+        # this is only for forcing the display of any error ...
+        # would go unnoticed otherwise!
+        s.get()
+    
+    pool.close()
+    pool.join()
+    
+    with open(args.output, 'wb') as output_file:
+        serialize_forests(forests, output_file)
+        
+def create_tree(log_level, csv_input_file, target_column):
+    """
+    Grows a single-tree forest
+    """
+    import multiprocessing as mp
+    logger = mp.get_logger()
+    logger.setLevel(logging.INFO)
     factory = TrainingSetFactory()
-    input_file = csv_input_file
-    target_column = target_column
-    data = factory.train_csv(input_file, target_name=target_column)
-    input_file.close()
-    forest = RandomForest()
-    forest.set_training_data(data, target_column)
-    forest.grow_trees(number_trees)
-    return forest
-
+    tree = None
+    with open(csv_input_file, 'r') as input_file:
+        data = factory.train_csv(input_file, target_name=target_column)
+        forest = RandomForest()
+        forest.set_training_data(data, target_column)
+        tree = forest.grow_tree()
+    
+    import cPickle
+    from StringIO import StringIO
+    output = StringIO()
+    cPickle.dump(tree, output)
+    return output.getvalue()
+    
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Generates a Random Forest',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('csv_input_file',
-        type=argparse.FileType('r'),
+        type=str,
         help='CSV file (including header) with list of training samples. First column serves as id for the samples')
 
     parser.add_argument('-o', '--output',

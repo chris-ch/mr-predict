@@ -1,15 +1,20 @@
 #
 # -*- coding: utf-8 -*-
 #
-import json
 
-from . import DecisionTreeFactory
+from predict.decisiontree import DecisionTreeFactory
+from predict.decisiontree import LeafDecisionNode
+from predict.decisiontree import DecisionNode
 from training import TrainingSet
 
 def serialize_forests(forests, output):
     import cPickle
-    cPickle.dump([tree for tree in [forest.trees for forest in forests]], output)
-    
+    trees = list()
+    for forest in forests:
+        trees += forest.trees
+        
+    cPickle.dump(trees, output)
+
 class RandomForest(object):
     """Random Forest built from bagging regression trees."""
 
@@ -61,6 +66,7 @@ class RandomForest(object):
         """Grow a single tree."""
         tree = self.tree_factory.create()
         self.trees.append(tree)
+        return tree
             
     def grow_trees(self, trees_count):
         """Grow a given number of trees."""
@@ -69,9 +75,6 @@ class RandomForest(object):
 
     def use_trees(self, trees):
         self.trees = trees
-
-    def json(self):
-        return json.dumps([tree.json() for tree in self.trees], cls=TreeJSONEncoder)
 
     def predict(self, sample):
         """
@@ -87,45 +90,4 @@ class RandomForest(object):
             return None
 
         return float(sum(predictions)) / len(predictions)
-
-    def __str__(self):
-        import os
-        s = ''
-        for root in self.trees:
-            s += os.linesep + as_string(self.target, self.table, root) + os.linesep
-
-        return s
-
-class TreeJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, (LeafDecisionNode,)):
-            return { 'value': obj.leaf_value }
-
-        elif isinstance(obj, (DecisionNode,)):
-            output = {
-                'split_dimension': obj.split_dimension,
-                'split_value': obj.split_value,
-                'left_node': obj.left_node,
-                'right_node': obj.right_node,
-            }
-            return output
-
-        return json.JSONEncoder.default(self, obj)
-
-
-def as_string(target, table, node, depth=0):
-    s = '  | ' * depth
-    if node.is_leaf():
-        s += '%.2f [count=%d, Var=%.1e]\n' % (
-                node.leaf_value, table.count(), table.variance(target))
-    else:
-        s += '%s(%.2f) [count=%d, Var=%.1e]\n' % (
-                node.split.dimension, node.split.val, table.count(), table.variance(target))
-
-        s += "%s%s" % (
-            as_string(target, node.split.left_table, node.left_node, depth + 1),
-            as_string(target, node.split.right_table, node.right_node, depth + 1),
-            )
-
-    return s
 
