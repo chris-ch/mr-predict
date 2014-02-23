@@ -7,6 +7,7 @@ import logging
 import argparse
 
 from predict.decisiontree.forest import RandomForest
+from predict.decisiontree.forest import serialize_forests
 from predict.decisiontree.training import TrainingSetFactory
 
 def config_logging(level):
@@ -28,19 +29,41 @@ def config_logging(level):
     # add ch to logger
     logger.addHandler(ch)
 
+def task(x):
+    task.q.put('Doing: ' + str(x))
+    return x*x
+
+def task_init(q):
+    task.q = q
+
 def main(args):
-    config_logging(args.log_level)
+    forest = create_forest(args.log_level, args.csv_input_file, args.target_column, args.number_trees)
+    with open(args.output, 'wb') as output_file:
+        serialize_forests([forest], output_file)
+        
+    #import multiprocessing as mp
+    #jobs = range(1,6)
+    #
+    #q = mp.Queue()
+    #p = mp.Pool(processes=4, initializer=task_init, initargs=[q])
+    #results = p.imap(task, jobs)
+    #p.close()
+    #
+    #for i in range(len(jobs)):
+    #    print q.get()
+    #    print results.next()
+
+def create_forest(log_level, csv_input_file, target_column, number_trees):
+    config_logging(log_level)
     factory = TrainingSetFactory()
-    input_file = args.csv_input_file
-    target_column = args.target_column
+    input_file = csv_input_file
+    target_column = target_column
     data = factory.train_csv(input_file, target_name=target_column)
     input_file.close()
     forest = RandomForest()
     forest.set_training_data(data, target_column)
-    forest.grow_trees(args.number_trees)
-    with open(args.output, 'wb') as output_file:
-        forest.serialize(output_file)
-
+    forest.grow_trees(number_trees)
+    return forest
 
 if __name__ == '__main__':
 

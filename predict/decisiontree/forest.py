@@ -6,6 +6,10 @@ import json
 from . import DecisionTreeFactory
 from training import TrainingSet
 
+def serialize_forests(forests, output):
+    import cPickle
+    cPickle.dump([tree for tree in [forest.trees for forest in forests]], output)
+    
 class RandomForest(object):
     """Random Forest built from bagging regression trees."""
 
@@ -37,30 +41,37 @@ class RandomForest(object):
         self.dimension_significance_threshold = dimension_significance_threshold
         self.target = target
         self.trees = []
+        self._tree_factory = None
 
+    @property
+    def tree_factory(self):
+        if self._tree_factory is None:
+            self._tree_factory = DecisionTreeFactory(self.table, self.target,
+                self.inclusion_ratio,
+                self.exclude,
+                self.min_count,
+                self.min_gain,
+                self.split_sampling,
+                self.dimension_significance_threshold
+                )
+        
+        return self._tree_factory
+
+    def grow_tree(self):
+        """Grow a single tree."""
+        tree = self.tree_factory.create()
+        self.trees.append(tree)
+            
     def grow_trees(self, trees_count):
         """Grow a given number of trees."""
-        factory = DecisionTreeFactory(self.table, self.target,
-                              self.inclusion_ratio,
-                              self.exclude,
-                              self.min_count,
-                              self.min_gain,
-                              self.split_sampling,
-                              self.dimension_significance_threshold
-                              )
         for i in range(trees_count):
-            tree = factory.create()
-            self.trees.append(tree)
+            tree = self.grow_tree()
 
     def use_trees(self, trees):
         self.trees = trees
 
     def json(self):
         return json.dumps([tree.json() for tree in self.trees], cls=TreeJSONEncoder)
-
-    def serialize(self, output):
-        import cPickle
-        cPickle.dump([tree for tree in self.trees], output)
 
     def predict(self, sample):
         """
