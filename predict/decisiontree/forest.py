@@ -31,7 +31,7 @@ class RandomForest(object):
 
         @param table: complete training set
         @param target: attribute to learn
-        @param attr_frac: fraction of attributes to use for splitting
+        @param inclusion_ratio: fraction of dimensions to use for splitting
         @param exclude: list of attributes to exclude from learning
         @param min_count: threshold for leaf size
         @param min_gain: minimum gain in variance for splitting

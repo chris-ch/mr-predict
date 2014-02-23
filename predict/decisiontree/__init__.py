@@ -50,7 +50,7 @@ class DecisionTreeFactory(object):
             
         elif table.variance(self.target) == 0.:
             leaf_value = table.median(self.target)
-            _LOG.debug('variance is 0, creating new leaf node for %d elements' % table.count())
+            _LOG.debug('output identical for all %d elements' % (table.count()))
             node = LeafDecisionNode(leaf_value)
         
         else:
@@ -62,27 +62,40 @@ class DecisionTreeFactory(object):
                 
             else:    
                 best_split, best_dimension, best_value = self._select_split(significant_dimensions, table)
-                gain = 1. - best_split.exp_var / table.variance(self.target)
-                if gain <= self.min_variance_gain:
+                if best_split is None:
+                    _LOG.debug('-------B1')
                     leaf_value = table.median(self.target)
-                    _LOG.debug('low gain in variance, creating new leaf node for %d elements' % table.count())
+                    _LOG.debug('no convenient split found, creating new leaf node for %d elements' % table.count())
                     node = LeafDecisionNode(leaf_value)
-                    
                 else:
-                    if best_split.left_table.count() == 0 or best_split.right_table.count() == 0:
-                    	leaf_value = table.median(self.target)
-                    	_LOG.debug('all elements on a single side, creating new leaf node for %d elements' % table.count())
-                    	node = LeafDecisionNode(leaf_value)
-                    	
+                    _LOG.debug('-------B2')
+                    gain = 1. - best_split['exp_var'] / table.variance(self.target)
+                    if gain <= self.min_variance_gain:
+                        _LOG.debug('-------C1')
+                        leaf_value = table.median(self.target)
+                        _LOG.debug('low gain in variance, creating new leaf node for %d elements' % table.count())
+                        node = LeafDecisionNode(leaf_value)
+                        
                     else:
-	                    left_node = self._load_node(best_split.left_table)
-	                    right_node = self._load_node(best_split.right_table)
-	                    _LOG.debug('new decision node splitting %d / %d' % (best_split.left_table.count(), best_split.right_table.count()))
-	                    node = DecisionNode(split_value=best_value,
-	                            split_dimension=best_dimension,
-	                            left_node=left_node,
-	                            right_node=right_node
-	                            )
+                        _LOG.debug('-------C2')
+                        if best_split['left_table'].count() == 0 or best_split['right_table'].count() == 0:
+                            _LOG.info('-------D1')
+                            leaf_value = table.median(self.target)
+                            _LOG.debug('all elements on a single side, creating new leaf node for %d elements' % table.count())
+                            node = LeafDecisionNode(leaf_value)
+                            
+                        else:
+                            _LOG.debug('-------D2')
+                            _LOG.debug('creating left subnode based on split %s' % best_split)
+                            left_node = self._load_node(best_split['left_table'])
+                            _LOG.debug('creating right subnode based on split %s' % best_split)
+                            right_node = self._load_node(best_split['right_table'])
+                            _LOG.debug('new decision node splitting %d / %d' % (best_split['left_table'].count(), best_split['right_table'].count()))
+                            node = DecisionNode(split_value=best_value,
+                                    split_dimension=best_dimension,
+                                    left_node=left_node,
+                                    right_node=right_node
+                                    )
 
         return node
 
@@ -103,17 +116,20 @@ class DecisionTreeFactory(object):
         best_dimension = None
         best_value = None
         for dimension in dimensions:
-            _LOG.debug('testing split value on dimension %s' % dimension)
+            _LOG.debug('testing split value on dimension %s for max %d samples' % (dimension, self.samples_split_size))
             for split_value in table.sample_measures(dimension, self.samples_split_size):
+                if split_value is None:
+                    continue
+                    
                 _LOG.debug('testing split value %s' % split_value)
                 split = self._create_split(dimension, split_value, table)
                 _LOG.debug('resulting split %s' % split)
-                if not best_split or split.exp_var < best_split.exp_var:
+                if not best_split or split['exp_var'] < best_split['exp_var']:
                     best_split = split
                     best_dimension = dimension
                     best_value = split_value
                     
-        _LOG.debug('keeping best split %s (%s)' % (best_dimension, best_value))
+        _LOG.debug('keeping best split "%s" (%s)' % (best_dimension, best_value))
         return (best_split, best_dimension, best_value)
     
     def _create_split(self, dimension, split_value, table):
@@ -135,17 +151,13 @@ class DecisionTreeFactory(object):
             right_var = right_table.variance(self.target)
             exp_var = k * left_var + (1.0 - k) * right_var
         
-        split = DimensionSplit(exp_var, left_table, right_table, null_table)
+        split = {
+            'exp_var': exp_var,
+            'left_table': left_table,
+            'right_table': right_table,
+            'null_table': null_table
+        }
         return split
-
-class DimensionSplit(object):
-    """ Records parameters for a dimension split """
-
-    def __init__(self, exp_var, left_table, right_table, null_table):
-        self.exp_var = exp_var
-        self.left_table = left_table
-        self.right_table = right_table
-        self.null_table = null_table
 
 class BaseDecisionNode(object):
     __metaclass__ = abc.ABCMeta

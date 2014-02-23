@@ -212,7 +212,6 @@ class TrainingSet(object):
 
             csv_writer.writerow(row_data)
 
-
-    def __str__(self):
-        return self.to_csv()
+    def __repr__(self):
+        return '[set of %d rows]' % self.count()
 

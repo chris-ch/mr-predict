@@ -49,7 +49,7 @@ def main(args):
         pool_status = list()
         for index in range(args.number_trees):
             status = pool.apply_async(create_tree,
-                    (args.log_level, args.csv_input_file, args.target_column),
+                    (args.log_level, args.csv_input_file, args.target_column, args.split_sampling),
                     callback=gather_trees)
             pool_status.append(status)
             
@@ -71,14 +71,14 @@ def main(args):
         with open(args.csv_input_file, 'r') as input_file:
             data = factory.train_csv(input_file, target_name=args.target_column)
             forest = RandomForest()
-            forest.set_training_data(data, args.target_column)
+            forest.set_training_data(data, args.target_column, split_sampling=args.split_sampling)
             forest.grow_trees(args.number_trees)
             forests = [forest]
     
     with open(args.output, 'wb') as output_file:
         serialize_forests(forests, output_file)
         
-def create_tree(log_level, csv_input_file, target_column):
+def create_tree(log_level, csv_input_file, target_column, split_sampling):
     """
     Grows a single-tree forest
     """
@@ -90,7 +90,7 @@ def create_tree(log_level, csv_input_file, target_column):
     with open(csv_input_file, 'r') as input_file:
         data = factory.train_csv(input_file, target_name=target_column)
         forest = RandomForest()
-        forest.set_training_data(data, target_column)
+        forest.set_training_data(data, target_column, split_sampling=split_sampling)
         tree = forest.grow_tree()
     
     import cPickle
@@ -125,6 +125,11 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--multiprocessing',
         type=int,
         help='splits the work using local processors')
+
+    parser.add_argument('-s', '--split-sampling',
+        type=int,
+        default=20,
+        help='number of samples used when selecting a split')
 
     parser.add_argument('-l', '--log-level',
         type=str,
