@@ -2,10 +2,13 @@
 # -*- coding: utf-8 -*-
 #
 
+import logging
 from predict.decisiontree import DecisionTreeFactory
 from predict.decisiontree import LeafDecisionNode
 from predict.decisiontree import DecisionNode
 from training import TrainingSet
+
+_LOG = logging.getLogger('training')
 
 def serialize_forests(forests, output):
     import cPickle
@@ -19,8 +22,8 @@ class RandomForest(object):
     """Random Forest built from bagging regression trees."""
 
     def set_training_data(self, table, target, inclusion_ratio=.75,
-                 exclude=[], min_count=5, min_gain=None,
-                 split_sampling=42,
+                 exclude=[], min_count=None, min_gain=None,
+                 split_sampling=50,
                  dimension_significance_threshold=0.5
                  ):
         """
@@ -36,11 +39,18 @@ class RandomForest(object):
 
         """
         assert target in table.get_dimensions(), 'target column "%s" is missing in input dataset' % target
+        _LOG.debug('building forest using new training data')
         self.table = table
+        table_size = table.count()
+        _LOG.debug('training data size: %d' % table_size)
         self.target = target
         self.inclusion_ratio = inclusion_ratio
         self.exclude = exclude
+        if min_count is None:
+            min_count = max(round(0.05 * table_size), 1)
+            
         self.min_count = min_count
+        _LOG.debug('min leaf size set to %d' % self.min_count)
         self.min_gain = min_gain
         self.split_sampling = split_sampling
         self.dimension_significance_threshold = dimension_significance_threshold
@@ -64,6 +74,7 @@ class RandomForest(object):
 
     def grow_tree(self):
         """Grow a single tree."""
+        _LOG.debug('growing a new tree')
         tree = self.tree_factory.create()
         self.trees.append(tree)
         return tree

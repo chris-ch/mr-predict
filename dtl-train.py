@@ -5,7 +5,7 @@ import os
 import sys
 import logging
 import argparse
-import multiprocessing
+import cPickle
 
 from predict.decisiontree.forest import RandomForest
 from predict.decisiontree.forest import serialize_forests
@@ -24,14 +24,14 @@ def config_logging(level):
     # create console handler and set level to debug
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(levelname)s %(asctime)s [%(name)s] %(message)s')
     ch.setFormatter(formatter)
 
     # add ch to logger
     logger.addHandler(ch)
 
 def main(args):
-    import cPickle
+    config_logging(args.log_level)
     workers_count = args.multiprocessing
     
     if workers_count:

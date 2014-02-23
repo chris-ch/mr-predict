@@ -25,7 +25,6 @@ class TrainingSetFactory(object):
                     # fine, simply ignore
                     pass
 
-            _LOG.debug('inserting %s' % str(row))
             ts.insert(row)
 
         return ts
@@ -152,12 +151,6 @@ class TrainingSet(object):
             
         return self._statistics[dim]
 
-    def sample_rows(self, sample_size):
-        """Sample table rows uniformly at random."""
-        assert len(self.items) > 0, 'Trying to sample an empty table'
-        return [self.items[random.randint(0, len(self.items) - 1)]
-                for i in range(sample_size)]
-
     def sample_measures(self, dimension, sample_size):
         """
         Samples uniformly at random from the set of values of a dimension.
@@ -166,15 +159,21 @@ class TrainingSet(object):
         @param sample_size: number of values to sample
 
         """
-        return [row[dimension] for row in self.sample_rows(sample_size)]
+        assert len(self.items) > 0, 'Trying to sample an empty table'
+        samples = []
+        for i in range(sample_size):
+            item = self.items[random.randint(0, len(self.items) - 1)]
+            samples.append(item[dimension])
+            
+        return samples
 
     def split(self, dimension, split_val):
         """Split according to a given dimension and a split value.
         Returns a 3-uple of tables: one for values <= split_val, one for
         values > split_val and one for undef values of the dimension.
 
-        dimension -- dimension to split on
-        split_val -- split value
+        @param dimension: dimension to split on
+        @param split_val: split value
 
         """
         left_table = TrainingSet()

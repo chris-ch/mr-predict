@@ -6,7 +6,7 @@ import random
 import os
 import abc
 
-_LOG = logging.getLogger('regression')
+_LOG = logging.getLogger('training')
 
 class DecisionTreeFactory(object):
     
@@ -43,14 +43,21 @@ class DecisionTreeFactory(object):
         """
         @param table: training subset at the node level
         """
-        if table.count() < self.min_items_count or table.variance(self.target) == 0.:
+        if table.count() < self.min_items_count:
             leaf_value = table.median(self.target)
+            _LOG.debug('low data size reached (%d), creating new leaf node' % table.count())
+            node = LeafDecisionNode(leaf_value)
+            
+        elif table.variance(self.target) == 0.:
+            leaf_value = table.median(self.target)
+            _LOG.debug('variance is 0, creating new leaf node for %d elements' % table.count())
             node = LeafDecisionNode(leaf_value)
         
         else:
             significant_dimensions = self._keep_significant_dimensions(self.dimensions, table)
             if len(significant_dimensions) == 0:
                 leaf_value = table.median(self.target)
+                _LOG.debug('no significant dimension, creating new leaf node for %d elements' % table.count())
                 node = LeafDecisionNode(leaf_value)
                 
             else:    
@@ -58,16 +65,19 @@ class DecisionTreeFactory(object):
                 gain = 1. - best_split.exp_var / table.variance(self.target)
                 if gain <= self.min_variance_gain:
                     leaf_value = table.median(self.target)
+                    _LOG.debug('low gain in variance, creating new leaf node for %d elements' % table.count())
                     node = LeafDecisionNode(leaf_value)
                     
                 else:
                     if best_split.left_table.count() == 0 or best_split.right_table.count() == 0:
                     	leaf_value = table.median(self.target)
+                    	_LOG.debug('all elements on a single side, creating new leaf node for %d elements' % table.count())
                     	node = LeafDecisionNode(leaf_value)
                     	
                     else:
 	                    left_node = self._load_node(best_split.left_table)
 	                    right_node = self._load_node(best_split.right_table)
+	                    _LOG.debug('new decision node splitting %d / %d' % (best_split.left_table.count(), best_split.right_table.count()))
 	                    node = DecisionNode(split_value=best_value,
 	                            split_dimension=best_dimension,
 	                            left_node=left_node,
@@ -93,13 +103,17 @@ class DecisionTreeFactory(object):
         best_dimension = None
         best_value = None
         for dimension in dimensions:
+            _LOG.debug('testing split value on dimension %s' % dimension)
             for split_value in table.sample_measures(dimension, self.samples_split_size):
+                _LOG.debug('testing split value %s' % split_value)
                 split = self._create_split(dimension, split_value, table)
+                _LOG.debug('resulting split %s' % split)
                 if not best_split or split.exp_var < best_split.exp_var:
                     best_split = split
                     best_dimension = dimension
                     best_value = split_value
                     
+        _LOG.debug('keeping best split %s (%s)' % (best_dimension, best_value))
         return (best_split, best_dimension, best_value)
     
     def _create_split(self, dimension, split_value, table):
