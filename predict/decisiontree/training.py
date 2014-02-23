@@ -74,6 +74,7 @@ class TrainingSet(object):
     def __init__(self):
         self._dimensions = list()
         self.items = dict()
+        self._statistics = dict()
 
     def insert(self, entry):
         row_id = len(self.items)
@@ -96,27 +97,49 @@ class TrainingSet(object):
         """Counts the number of rows in the table."""
         return len([item for item in self.items.itervalues() if item[dim] is not None])
 
-    def mean(self, dim):
+    def median(self, dim):
         """
-        Computes the mean for a dimension
+        Computes the median for a dimension
         """
-        assert len(self.items) > 0, 'Trying to compute mean of an empty set'
-        values = [row[dim] for row in self.items.itervalues() if row[dim] is not None]
-        if len(values) == 0:
-            return None
+        assert len(self.items) > 0, 'Trying to compute median of an empty set'
+        return self.statistics(dim)[2]
 
-        total = float(sum(values))
-        return total / len(values)
+    def variance(self, dim):
+        return self.statistics(dim)[1]
 
-    def variance(self, attr):
-        """Compute the variance of the set of values of an attribute."""
+    def statistics(self, dim):
+        """
+        Computes the statistics (mean, variance) for a dimension
+        """
         assert len(self.items) > 0, 'Trying to compute variance of an empty set'
-        values = [row[attr]**2 for row in self.items.itervalues() if row[attr] is not None]
-        if len(values) == 0:
-            return None
-
-        totsq = float(sum(values))
-        return totsq / len(values) - self.mean(attr)**2
+        if not self._statistics.has_key(dim):
+            total = 0.0
+            total_squares = 0.0
+            values = list()
+            for row in self.items.itervalues():
+                if row[dim] is not None:
+                    total += row[dim]
+                    total_squares += row[dim]**2
+                    values.append(row[dim])
+                
+            if len(values) == 0:
+                return (None, None, None)
+    
+            values.sort()
+            median = None
+            if len(values) & 1:
+                # odd number of items
+                median = values[len(values) / 2]
+                
+            else:
+                #even number of items
+                median = 0.5 * (values[len(values) / 2 - 1] + values[len(values) / 2])
+            
+            mean = float(total) / len(values)
+            variance = float(total_squares) / len(values) - mean**2
+            self._statistics[dim] = (mean, variance, median)
+            
+        return self._statistics[dim]
 
     def sample_rows(self, sample_size):
         """Sample table rows uniformly at random."""

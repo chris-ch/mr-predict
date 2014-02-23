@@ -54,9 +54,12 @@ def main(args):
             pool_status.append(status)
             
         for s in pool_status:
-            # this is only for forcing the display of any error ...
-            # would go unnoticed otherwise!
-            s.get()
+            # This is only for forcing the display of some error ...
+            # It would go unnoticed otherwise!
+            # Also note that side-effect of setting a timeout is that
+            # it works around python's bug when processes are interrupted
+            # (they would hang otherwise forcing to kill -9...)
+            s.get(10 * 60)
         
         pool.close()
         pool.join()

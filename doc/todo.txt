@@ -1,4 +1,11 @@
-- algorithm: use median instead fo mean
-- using multiprocessor at the main script level when building forest
+
+Todo
+----
 - add log showing progress when building forest
 - benchmark cross-check against random variable
+- optimize the number of samples triggering a leaf
+
+Done
+----
+- algorithm: use median instead fo mean
+- using multiprocessor at the main script level when building forest

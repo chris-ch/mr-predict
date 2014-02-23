@@ -66,27 +66,25 @@ class NDBTrainingSet(object):
             ).count()
         return count
 
-    def mean(self, dimension):
+    def statistics(self, dimension):
         """
-        Mean value across a specific dimension.
+        Computes (mean, variance) value across a specific dimension.
         """
         assert len(self.samples) > 0, 'Trying to compute mean of an empty set'
-        total = 0
+        total = 0.0
+        total_squares = 0.0
         for sample_key in self.samples:
             sample = sample_key.get()
             _LOG.info('test %s' % str(sample.measures[dimension]))
             for measure in sample.measures:
                 if measure.dimension == dimension:
                     total += measure.value
+                    total_squares += measure.value**2
                     
-        return total / len(self.samples)
+        mean = float(total) / len(samples)
+        variance = float(total_squares) / len(samples) - mean**2
+        return (mean, variance)
     
-    def variance(self, dimension):
-        """Compute the variance of the set of values of an attribute."""
-        assert len(self.samples) > 0, 'Trying to compute variance of an empty set'
-        totsq = sum([row[dimension]**2 for row in self.samples.itervalues()])
-        return float(totsq) / len(self.samples) - self.mean(dimension)**2
-
     def sample_rows(self, sample_size):
         """Sample table rows uniformly at random."""
         assert len(self.items) > 0, 'Trying to sample an empty table'

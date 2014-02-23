@@ -44,25 +44,25 @@ class DecisionTreeFactory(object):
         @param table: training subset at the node level
         """
         if table.count() < self.min_items_count or table.variance(self.target) == 0.:
-            leaf_value = table.mean(self.target)
+            leaf_value = table.median(self.target)
             node = LeafDecisionNode(leaf_value)
         
         else:
             significant_dimensions = self._keep_significant_dimensions(self.dimensions, table)
             if len(significant_dimensions) == 0:
-                leaf_value = table.mean(self.target)
+                leaf_value = table.median(self.target)
                 node = LeafDecisionNode(leaf_value)
                 
             else:    
                 best_split, best_dimension, best_value = self._select_split(significant_dimensions, table)
                 gain = 1. - best_split.exp_var / table.variance(self.target)
                 if gain <= self.min_variance_gain:
-                    leaf_value = table.mean(self.target)
+                    leaf_value = table.median(self.target)
                     node = LeafDecisionNode(leaf_value)
                     
                 else:
                     if best_split.left_table.count() == 0 or best_split.right_table.count() == 0:
-                    	leaf_value = table.mean(self.target)
+                    	leaf_value = table.median(self.target)
                     	node = LeafDecisionNode(leaf_value)
                     	
                     else:
