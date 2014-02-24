@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 import os
+import os.path
 import sys
 import logging
 import cPickle
@@ -31,11 +32,23 @@ def config_logging(level):
 
 def main(args):
     config_logging(args.log_level)
-    forest_file = args.forest
-    forest_data = cPickle.load(forest_file)
-    forest_file.close()
+    forest_path = args.forest
     forest = RandomForest()
-    forest.use_trees(forest_data)
+    if os.path.isdir(forest_path):
+        only_files = [f for f in os.listdir(forest_path)
+            if os.path.isfile(os.path.join(forest_path, f)) ]
+            
+        for f in only_files:
+            with open(os.path.join(forest_path, f), 'r') as forest_file:
+                forest_data = cPickle.load(forest_file)
+                forest.use_trees(forest_data)
+            
+    else:
+        with open(forest_path, 'r') as forest_file:
+            forest_data = cPickle.load(forest_file)
+            forest.use_trees(forest_data)
+        
+    print 'number of trees:', len(forest.trees)
     samples = csv.reader(args.csv_input_file, delimiter=',')
     first_line = next(samples)
     header = first_line[1:]
@@ -92,9 +105,9 @@ if __name__ == '__main__':
         help='output of the regression for each sample')
 
     parser.add_argument('-f', '--forest',
-        type=argparse.FileType('r'),
+        type=str,
         default='forest',
-        help='forest data obtained from training phase')
+        help='forest data obtained from training phase: can be a directory or a file')
 
     parser.add_argument('-c', '--check',
         type=argparse.FileType('r'),

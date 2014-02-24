@@ -21,6 +21,9 @@ def serialize_forests(forests, output):
 class RandomForest(object):
     """Random Forest built from bagging regression trees."""
 
+    def __init__(self):
+        self.trees = []
+
     def set_training_data(self, table, target, inclusion_ratio=.75,
                  exclude=[], min_count=None, min_gain=None,
                  split_sampling=50,
@@ -55,7 +58,6 @@ class RandomForest(object):
         self.split_sampling = split_sampling
         self.dimension_significance_threshold = dimension_significance_threshold
         self.target = target
-        self.trees = []
         self._tree_factory = None
 
     @property
@@ -85,7 +87,7 @@ class RandomForest(object):
             tree = self.grow_tree()
 
     def use_trees(self, trees):
-        self.trees = trees
+        self.trees += trees
 
     def predict(self, sample):
         """
