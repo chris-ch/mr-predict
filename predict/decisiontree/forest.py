@@ -100,6 +100,7 @@ class RandomForest(object):
                 predictions.append(prediction)
 
         if len(predictions) == 0:
+            #_LOG.info('no tree was able to predict an output for sample: %s' % sample)
             return None
 
         return float(sum(predictions)) / len(predictions)

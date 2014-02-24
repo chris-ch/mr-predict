@@ -24,7 +24,7 @@ def config_logging(level):
     logging.getLogger().setLevel(level_mapping[level])
 
     # create console handler and set level to debug
-    ch = logging.StreamHandler()
+    ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
@@ -86,13 +86,13 @@ def main(args):
                     res_value = 0.0
                     
                 else:
-                    res_value = round(float(res_row[1]))
+                    res_value = float(res_row[1])
                 
                 mean_abs_error += abs(ref_value - res_value)
 
             mean_abs_error /= float(samples_count)
-            msg_template = 'cheking results: mean absolute error = %.2f%% on a total of %d samples'
-            logging.info(msg_template % (100.0 * mean_abs_error, samples_count))
+            msg_template = 'cheking results: mean absolute error = %.2f on a total of %d samples'
+            logging.info(msg_template % (mean_abs_error, samples_count))
 
 if __name__ == '__main__':
 

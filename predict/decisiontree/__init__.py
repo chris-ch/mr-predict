@@ -168,6 +168,7 @@ class BaseDecisionNode(object):
     def predict(self, sample):
         """Predicts the regressand value for sample"""
         if self.is_leaf():
+            _LOG.info('predicting: %s' % self.leaf_value)
             return self.leaf_value
         
         else:
@@ -179,7 +180,9 @@ class BaseDecisionNode(object):
                     return self.right_node.predict(sample)
             
             else:
-                return None
+                left_node_value = self.left_node.predict(sample) 
+                right_node_value = self.right_node.predict(sample)
+                return 0.5 * (left_node_value + right_node_value) 
          
 class LeafDecisionNode(BaseDecisionNode):
     
