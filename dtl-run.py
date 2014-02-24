@@ -19,7 +19,9 @@ def config_logging(level):
         'info': logging.INFO,
         'warn': logging.WARNING,
     }
+    # root logger
     logger.setLevel(level_mapping[level])
+    logging.getLogger().setLevel(level_mapping[level])
 
     # create console handler and set level to debug
     ch = logging.StreamHandler()
@@ -47,8 +49,8 @@ def main(args):
         with open(forest_path, 'r') as forest_file:
             forest_data = cPickle.load(forest_file)
             forest.use_trees(forest_data)
-        
-    print 'number of trees:', len(forest.trees)
+            
+    logging.info('loaded a total of %d trees' % len(forest.trees))
     samples = csv.reader(args.csv_input_file, delimiter=',')
     first_line = next(samples)
     header = first_line[1:]
@@ -75,21 +77,22 @@ def main(args):
             res_rows = csv.reader(res_file)
             next(ref_rows)
             next(res_rows)
-            errors_count = 0
+            mean_abs_error = 0.0
             samples_count = 0
             for ref_row, res_row in izip(ref_rows, res_rows):
                 ref_value = float(ref_row[1])
                 samples_count += 1
-                if res_row[1] not in ('None', '', 'NA'):                    
-                    res_value = round(float(res_row[1]))
-                    errors_count += (0, 1)[abs(ref_value - res_value) != 0.0]
-
+                if res_row[1] in ('None', '', 'NA'):
+                    res_value = 0.0
+                    
                 else:
-                    errors_count += 1
+                    res_value = round(float(res_row[1]))
+                
+                mean_abs_error += abs(ref_value - res_value)
 
-            print 'cheking results: %d errors detected from a total of %d samples' % (errors_count, samples_count)
-
-
+            mean_abs_error /= float(samples_count)
+            msg_template = 'cheking results: mean absolute error = %.2f%% on a total of %d samples'
+            logging.info(msg_template % (100.0 * mean_abs_error, samples_count))
 
 if __name__ == '__main__':
 
