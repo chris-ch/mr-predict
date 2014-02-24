@@ -101,17 +101,9 @@ class TrainingSet(object):
         Sorted list of non null values for a specific dimension.
         """
         if not self._list_not_null.has_key(dim):
-            self._list_not_null[dim] = list()
-            for item in self.items.itervalues():
-                if not item.has_key(dim):
-                    keys = item.keys()
-                    keys.sort()
-                if item[dim] is not None:
-                    value = item[dim]
-                    self._list_not_null[dim] .append(value)
-                    
-                                    
-            self._list_not_null[dim].sort()
+            not_null_items = [item[dim] for item in self.items.itervalues()
+                if item[dim] is not None]                                    
+            self._list_not_null[dim] = sorted(not_null_items)
             
         return self._list_not_null[dim]
 
