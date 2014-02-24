@@ -11,6 +11,7 @@ class TrainingSetFactory(object):
 
     def train_csv(self, input_file, target_name='target'):
         import csv
+        _LOG.info('loading training set')
         ts = TrainingSet()
         input_data = csv.reader(input_file, delimiter=',')
         header = next(input_data)[1:]
@@ -27,6 +28,7 @@ class TrainingSetFactory(object):
 
             ts.insert(row)
 
+        _LOG.info('training set: %d samples and %d dimensions loaded' % (ts.count(), len(header)))
         return ts
 
     def train_x_y(self, func, count, range_x, range_y,

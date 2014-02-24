@@ -45,19 +45,19 @@ class DecisionTreeFactory(object):
         """
         if table.count() < self.min_items_count:
             leaf_value = table.median(self.target)
-            _LOG.debug('low data size reached (%d), creating new leaf node' % table.count())
+            _LOG.info('low data size reached (%d), creating new leaf node with value %s' % (table.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
             
         elif table.variance(self.target) == 0.:
             leaf_value = table.median(self.target)
-            _LOG.debug('output identical for all %d elements' % (table.count()))
+            _LOG.info('output identical for all %d elements with value %s' % (table.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
         
         else:
             significant_dimensions = self._keep_significant_dimensions(self.dimensions, table)
             if len(significant_dimensions) == 0:
                 leaf_value = table.median(self.target)
-                _LOG.debug('no significant dimension, creating new leaf node for %d elements' % table.count())
+                _LOG.info('no significant dimension, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
                 node = LeafDecisionNode(leaf_value)
                 
             else:    
@@ -65,7 +65,7 @@ class DecisionTreeFactory(object):
                 if best_split is None:
                     _LOG.debug('-------B1')
                     leaf_value = table.median(self.target)
-                    _LOG.debug('no convenient split found, creating new leaf node for %d elements' % table.count())
+                    _LOG.info('no convenient split found, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
                     node = LeafDecisionNode(leaf_value)
                 else:
                     _LOG.debug('-------B2')
@@ -73,7 +73,7 @@ class DecisionTreeFactory(object):
                     if gain <= self.min_variance_gain:
                         _LOG.debug('-------C1')
                         leaf_value = table.median(self.target)
-                        _LOG.debug('low gain in variance, creating new leaf node for %d elements' % table.count())
+                        _LOG.info('low gain in variance, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
                         node = LeafDecisionNode(leaf_value)
                         
                     else:
@@ -81,16 +81,16 @@ class DecisionTreeFactory(object):
                         if best_split['left_table'].count() == 0 or best_split['right_table'].count() == 0:
                             _LOG.debug('-------D1')
                             leaf_value = table.median(self.target)
-                            _LOG.debug('all elements on a single side, creating new leaf node for %d elements' % table.count())
+                            _LOG.info('all elements on a single side, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
                             node = LeafDecisionNode(leaf_value)
                             
                         else:
                             _LOG.debug('-------D2')
-                            _LOG.debug('creating left subnode based on split %s' % best_split)
+                            _LOG.info('creating left subnode based on split %s' % best_split)
                             left_node = self._load_node(best_split['left_table'])
-                            _LOG.debug('creating right subnode based on split %s' % best_split)
+                            _LOG.info('creating right subnode based on split %s' % best_split)
                             right_node = self._load_node(best_split['right_table'])
-                            _LOG.debug('new decision node splitting %d / %d' % (best_split['left_table'].count(), best_split['right_table'].count()))
+                            _LOG.info('new decision node splitting %d / %d' % (best_split['left_table'].count(), best_split['right_table'].count()))
                             node = DecisionNode(split_value=best_value,
                                     split_dimension=best_dimension,
                                     left_node=left_node,
