@@ -15,6 +15,7 @@ class TrainingSetFactory(object):
         input_data = csv.reader(input_file, delimiter=',')
         header = next(input_data)[1:]
         assert target_name in header, 'target column "%s" is missing in input dataset' % target_name
+        ts.set_dimensions(header)
         for columns in input_data:
             row = {}
             for index, cell in enumerate(columns[1:]):
@@ -22,8 +23,7 @@ class TrainingSetFactory(object):
                     row[header[index]] = float(cell)
 
                 except ValueError:
-                    # fine, simply ignore
-                    pass
+                    row[header[index]] = None
 
             ts.insert(row)
 
@@ -77,14 +77,12 @@ class TrainingSet(object):
         self._list_not_null = dict()
         self._statistics = dict()
 
+    def set_dimensions(self, dimensions):
+        self._dimensions = dimensions
+    
     def insert(self, entry):
         row_id = len(self.items)
-        self.items[row_id] = defaultdict(lambda: None)
-        for key in entry.keys():
-            if not key in self._dimensions:
-                self._dimensions.append(key)
-
-            self.items[row_id][key] = entry[key]
+        self.items[row_id] = entry
 
     def get_dimensions(self):
         """Get all table attributes."""
@@ -103,8 +101,16 @@ class TrainingSet(object):
         Sorted list of non null values for a specific dimension.
         """
         if not self._list_not_null.has_key(dim):
-            self._list_not_null[dim] = [item[dim] for item in self.items.itervalues()
-                                        if item[dim] is not None]
+            self._list_not_null[dim] = list()
+            for item in self.items.itervalues():
+                if not item.has_key(dim):
+                    keys = item.keys()
+                    keys.sort()
+                if item[dim] is not None:
+                    value = item[dim]
+                    self._list_not_null[dim] .append(value)
+                    
+                                    
             self._list_not_null[dim].sort()
             
         return self._list_not_null[dim]
@@ -167,6 +173,11 @@ class TrainingSet(object):
             
         return samples
 
+    def create_child_table(self):
+        ts = TrainingSet()
+        ts.set_dimensions(self.get_dimensions())
+        return ts
+
     def split(self, dimension, split_val):
         """Split according to a given dimension and a split value.
         Returns a 3-uple of tables: one for values <= split_val, one for
@@ -176,14 +187,11 @@ class TrainingSet(object):
         @param split_val: split value
 
         """
-        left_table = TrainingSet()
-        right_table = TrainingSet()
-        null_table = TrainingSet()
+        left_table = self.create_child_table()
+        right_table = self.create_child_table()
+        null_table = self.create_child_table()        
         for entry in self.items.itervalues():
-            if not dimension in entry.keys():
-                null_table.insert(entry)
-
-            elif entry[dimension] <= split_val:
+            if entry[dimension] <= split_val:
                 left_table.insert(entry)
 
             else:

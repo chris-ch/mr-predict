@@ -79,7 +79,7 @@ class DecisionTreeFactory(object):
                     else:
                         _LOG.debug('-------C2')
                         if best_split['left_table'].count() == 0 or best_split['right_table'].count() == 0:
-                            _LOG.info('-------D1')
+                            _LOG.debug('-------D1')
                             leaf_value = table.median(self.target)
                             _LOG.debug('all elements on a single side, creating new leaf node for %d elements' % table.count())
                             node = LeafDecisionNode(leaf_value)
