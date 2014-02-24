@@ -137,10 +137,8 @@ class DecisionTreeFactory(object):
         Splits the provided table along dimension based on split_value.
         """
         left_table, right_table, null_table = table.split(dimension, split_value)
-        if null_table.count() > 0:
-            half_index = int(0.5 * len(null_table))
-            left_table += null_table[:half_index]
-            right_table += null_table[half_index:]
+        for item in null_table.get_items():
+            random.choice([left_table, right_table]).insert(item)
         
         if left_table.count() == 0 or right_table.count() == 0:
             exp_var = table.variance(self.target)

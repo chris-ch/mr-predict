@@ -18,13 +18,13 @@ class TrainingSetFactory(object):
         assert target_name in header, 'target column "%s" is missing in input dataset' % target_name
         ts.set_dimensions(header)
         for columns in input_data:
-            row = {}
-            for index, cell in enumerate(columns[1:]):
+            row = list()
+            for cell in columns[1:]:
                 try:
-                    row[header[index]] = float(cell)
+                    row.append(float(cell))
 
                 except ValueError:
-                    row[header[index]] = None
+                    row.append(None)
 
             ts.insert(row)
 
@@ -74,17 +74,22 @@ class TrainingSet(object):
 
     def __init__(self):
         self._dimensions = list()
-        self.items = dict()
+        self.index = dict()
+        self.items = list()
         # caching
         self._list_not_null = dict()
         self._statistics = dict()
 
+    def get_items(self):
+        return self.items
+
     def set_dimensions(self, dimensions):
         self._dimensions = dimensions
+        for count, dim in enumerate(dimensions):
+            self.index[dim] = count
     
     def insert(self, entry):
-        row_id = len(self.items)
-        self.items[row_id] = entry
+        self.items.append(entry)
 
     def get_dimensions(self):
         """Get all table attributes."""
@@ -103,11 +108,15 @@ class TrainingSet(object):
         Sorted list of non null values for a specific dimension.
         """
         if not self._list_not_null.has_key(dim):
-            not_null_items = [item[dim] for item in self.items.itervalues()
-                if item[dim] is not None]                                    
+            index = self.index[dim]
+            not_null_items = [item[index] for item in self.items
+            if item[index] is not None]                                    
             self._list_not_null[dim] = sorted(not_null_items)
             
         return self._list_not_null[dim]
+
+    def fetch(self, dim):
+        return self.items[self.index[dim]]
 
     def median(self, dim):
         """
@@ -160,12 +169,9 @@ class TrainingSet(object):
 
         """
         assert len(self.items) > 0, 'Trying to sample an empty table'
-        samples = []
-        for i in range(sample_size):
-            item = self.items[random.randint(0, len(self.items) - 1)]
-            samples.append(item[dimension])
-            
-        return samples
+        index = self.index[dimension]
+        sample_size = min(sample_size, len(self.items))
+        return [item[index] for item in random.sample(self.items, sample_size)]
 
     def create_child_table(self):
         ts = TrainingSet()
@@ -183,9 +189,13 @@ class TrainingSet(object):
         """
         left_table = self.create_child_table()
         right_table = self.create_child_table()
-        null_table = self.create_child_table()        
-        for entry in self.items.itervalues():
-            if entry[dimension] <= split_val:
+        null_table = self.create_child_table()
+        index = self.index[dimension]
+        for entry in self.items:
+            if entry[index] is None:
+                null_table.insert(entry)
+                
+            elif entry[index] <= split_val:
                 left_table.insert(entry)
 
             else:
@@ -206,11 +216,11 @@ class TrainingSet(object):
         field_names = ['id'] + dimensions
         csv_writer = csv.DictWriter(csv_file, fieldnames=field_names, dialect='excel')
         csv_writer.writeheader()
-        for item_id in self.items:
+        for item_id, item in enumerate(self.items):
             row_data = dict()
             row_data['id'] = item_id
             for dim in dimensions:
-                row_data[dim] = self.items[item_id][dim]
+                row_data[dim] = item.fetch(dim)
 
             csv_writer.writerow(row_data)
 
