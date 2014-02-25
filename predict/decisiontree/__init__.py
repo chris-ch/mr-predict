@@ -168,7 +168,7 @@ class BaseDecisionNode(object):
     def predict(self, sample):
         """Predicts the regressand value for sample"""
         if self.is_leaf():
-            _LOG.info('predicting: %s' % self.leaf_value)
+            _LOG.debug('predicting: %s' % self.leaf_value)
             return self.leaf_value
         
         else:
