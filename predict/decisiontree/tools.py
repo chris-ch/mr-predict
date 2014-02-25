@@ -27,12 +27,16 @@ def histogram(x, bins, min_x=None, max_x=None):
         
     return h
 
-def entropy(x, accuracy=20):
+def entropy(x, min_x, max_x, accuracy=20):
     """
     Entropy of a list of float values.
     """
-    min_x = min(x)
-    max_x = max(x)
+    if not min_x:
+        min_x = min(x)
+        
+    if not max_x:
+        max_x = max(x)
+        
     if min_x == max_x:
         return 0.0
         
@@ -46,9 +50,9 @@ def entropy(x, accuracy=20):
 if __name__ == '__main__':
     ones = [1, 0, 1, 1, 1, 1, 1, 0, 1, 1]
     zeros = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
-    print 'both', entropy(ones + zeros)
-    print 'ones', entropy(ones)
-    print 'zeros', entropy(zeros)
+    print 'both', entropy(ones + zeros, 0, 100)
+    print 'ones', entropy(ones, 0, 1)
+    print 'zeros', entropy(zeros, 0, 1)
     alpha = float(len(ones)) / float(len(ones) + len(zeros))
-    print 'total', alpha * entropy(ones) + (1.0 - alpha) * entropy(zeros)
+    print 'total', alpha * entropy(ones, 0, 1) + (1.0 - alpha) * entropy(zeros, 0, 1)
     

@@ -48,7 +48,7 @@ class DecisionTreeFactory(object):
             _LOG.info('low data size reached (%d), creating new leaf node with value %s' % (table.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
             
-        elif table.variance(self.target) == 0.:
+        elif table.entropy(self.target) == 0.:
             leaf_value = table.median(self.target)
             _LOG.info('output identical for all %d elements with value %s' % (table.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
@@ -69,7 +69,7 @@ class DecisionTreeFactory(object):
                     node = LeafDecisionNode(leaf_value)
                 else:
                     _LOG.debug('-------B2')
-                    gain = 1. - best_split['score'] / table.variance(self.target)
+                    gain = 1. - best_split['score'] / table.entropy(self.target)
                     if gain <= self.min_split_gain:
                         _LOG.debug('-------C1')
                         leaf_value = table.median(self.target)
@@ -141,18 +141,17 @@ class DecisionTreeFactory(object):
             random.choice([left_table, right_table]).insert(item)
         
         if left_table.count() == 0 or right_table.count() == 0:
-            score = table.variance(self.target)
+            score = table.entropy(self.target) # score will be unchanged
             
         else:
-            k = float(left_table.count()) / table.count()
-            left_var = left_table.variance(self.target)
-            right_var = right_table.variance(self.target)
-            # here respective variances are used as a proxy for measuring entropy
+            alpha = float(left_table.count()) / table.count()
+            left_entropy = left_table.entropy(self.target)
+            right_entropy = right_table.entropy(self.target)
             # we try to minimize entropy as a whole
             # thanks to the k weighting, if one of the sets has a higher entropy
             # the split is still acceptable if the corresponding number of elements
             # is lower than in the other set
-            score = k * left_var + (1.0 - k) * right_var
+            score = alpha * left_entropy + (1.0 - alpha) * right_entropy
         
         split = {
             'score': score,
