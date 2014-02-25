@@ -7,6 +7,8 @@ _LOG = logging.getLogger('training')
 import random
 from collections import defaultdict
 
+from predict.decisiontree import tools
+
 class TrainingSetFactory(object):
 
     def train_csv(self, input_file, target_name='target'):
@@ -28,6 +30,7 @@ class TrainingSetFactory(object):
 
             ts.insert(row)
 
+        ts.end_insert(target_name)
         _LOG.info('training set: %d samples and %d dimensions loaded' % (ts.count(), len(header)))
         return ts
 
@@ -79,6 +82,8 @@ class TrainingSet(object):
         # caching
         self._list_not_null = dict()
         self._statistics = dict()
+        self.output_min = None
+        self.output_max = None
 
     def get_items(self):
         return self.items
@@ -90,6 +95,12 @@ class TrainingSet(object):
     
     def insert(self, entry):
         self.items.append(entry)
+
+    def end_insert(self, output_column):
+        output_index = self.index[output_column]
+        outputs = [item[output_index] for item in self.get_items()]
+        self.output_min = min(outputs)
+        self.output_max = max(outputs)
 
     def get_dimensions(self):
         """Get all table attributes."""
@@ -118,6 +129,10 @@ class TrainingSet(object):
     def fetch(self, dim):
         return self.items[self.index[dim]]
 
+    def variance(self, dim):
+        assert len(self.items) > 0, 'no variance for an empty set'
+        return self.statistics(dim)[1]
+
     def median(self, dim):
         """
         Computes the median for a dimension
@@ -125,9 +140,9 @@ class TrainingSet(object):
         assert len(self.items) > 0, 'no median for an empty set'
         return self.statistics(dim)[2]
 
-    def variance(self, dim):
-        assert len(self.items) > 0, 'no variance for an empty set'
-        return self.statistics(dim)[1]
+    def entropy(self, dim):
+        assert len(self.items) > 0, 'no entropy for an empty set'
+        return self.statistics(dim)[3]
 
     def statistics(self, dim):
         """
@@ -156,7 +171,8 @@ class TrainingSet(object):
             
             mean = float(total) / len(values)
             variance = float(total_squares) / len(values) - mean**2
-            self._statistics[dim] = (mean, variance, median)
+            entropy = tools.entropy(values, self.output_min, self.output_max, accuracy=20)
+            self._statistics[dim] = (mean, variance, median, entropy)
             
         return self._statistics[dim]
 

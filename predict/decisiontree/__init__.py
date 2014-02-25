@@ -11,7 +11,7 @@ _LOG = logging.getLogger('training')
 class DecisionTreeFactory(object):
     
     def __init__(self, table, target, inclusion_ratio,
-                 exclude, min_items_count, min_variance_gain,
+                 exclude, min_items_count, min_split_gain,
                  samples_split_size, dimension_significance_threshold):
         """
         @param table: full training table
@@ -19,7 +19,7 @@ class DecisionTreeFactory(object):
         @param inclusion_ratio: fraction of dimensions to use for splitting
         @param exclude: list of dimensions to exclude from learning
         @param min_items_count: threshold for leaf size
-        @param min_variance_gain: minimum gain in variance for splitting
+        @param min_split_gain: minimum gain when splitting
         @param samples_split_size: number of values to sample when considering a new split on a dimension
         @param dimension_significance_threshold: ratio of non-null values considered as significant in a given dimension
         """
@@ -28,7 +28,7 @@ class DecisionTreeFactory(object):
         self.exclude = exclude
         self.target = target
         self.min_items_count = min_items_count
-        self.min_variance_gain = min_variance_gain
+        self.min_split_gain = min_split_gain
         self.samples_split_size = samples_split_size
         self.dimensions = [dim for dim in self.table.get_dimensions()
                       if dim != self.target and dim not in self.exclude]
@@ -48,7 +48,7 @@ class DecisionTreeFactory(object):
             _LOG.info('low data size reached (%d), creating new leaf node with value %s' % (table.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
             
-        elif table.variance(self.target) == 0.:
+        elif table.entropy(self.target) == 0.:
             leaf_value = table.median(self.target)
             _LOG.info('output identical for all %d elements with value %s' % (table.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
@@ -69,11 +69,11 @@ class DecisionTreeFactory(object):
                     node = LeafDecisionNode(leaf_value)
                 else:
                     _LOG.debug('-------B2')
-                    gain = 1. - best_split['exp_var'] / table.variance(self.target)
-                    if gain <= self.min_variance_gain:
+                    gain = 1. - best_split['score'] / table.entropy(self.target)
+                    if gain <= self.min_split_gain:
                         _LOG.debug('-------C1')
                         leaf_value = table.median(self.target)
-                        _LOG.info('low gain in variance, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
+                        _LOG.info('gain too low, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
                         node = LeafDecisionNode(leaf_value)
                         
                     else:
@@ -124,7 +124,7 @@ class DecisionTreeFactory(object):
                 _LOG.debug('testing split value %s' % split_value)
                 split = self._create_split(dimension, split_value, table)
                 _LOG.debug('resulting split %s' % split)
-                if not best_split or split['exp_var'] < best_split['exp_var']:
+                if not best_split or split['score'] < best_split['score']:
                     best_split = split
                     best_dimension = dimension
                     best_value = split_value
@@ -141,16 +141,20 @@ class DecisionTreeFactory(object):
             random.choice([left_table, right_table]).insert(item)
         
         if left_table.count() == 0 or right_table.count() == 0:
-            exp_var = table.variance(self.target)
+            score = table.entropy(self.target) # score will be unchanged
             
         else:
-            k = float(left_table.count()) / table.count()
-            left_var = left_table.variance(self.target)
-            right_var = right_table.variance(self.target)
-            exp_var = k * left_var + (1.0 - k) * right_var
+            alpha = float(left_table.count()) / table.count()
+            left_entropy = left_table.entropy(self.target)
+            right_entropy = right_table.entropy(self.target)
+            # we try to minimize entropy as a whole
+            # thanks to the k weighting, if one of the sets has a higher entropy
+            # the split is still acceptable if the corresponding number of elements
+            # is lower than in the other set
+            score = alpha * left_entropy + (1.0 - alpha) * right_entropy
         
         split = {
-            'exp_var': exp_var,
+            'score': score,
             'left_table': left_table,
             'right_table': right_table,
             'null_table': null_table
