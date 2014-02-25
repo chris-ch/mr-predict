@@ -27,8 +27,11 @@ def config_logging(level):
     formatter = logging.Formatter('%(levelname)s %(asctime)s [%(name)s] %(message)s')
     ch.setFormatter(formatter)
 
+    logging.getLogger('tools').setLevel(level_mapping[level])
+    
     # add ch to logger
     logger.addHandler(ch)
+    logging.getLogger('tools').addHandler(ch)
 
 def main(args):
     config_logging(args.log_level)
@@ -69,7 +72,7 @@ def main(args):
         factory = TrainingSetFactory()
         forests = None
         with open(args.csv_input_file, 'r') as input_file:
-            data = factory.train_csv(input_file, target_name=args.target_column)
+            data = factory.train_csv(input_file, target_name=args.target_column, output_sampling=args.output_sampling)
             forest = RandomForest()
             forest.set_training_data(data, args.target_column, min_count=args.min_leaf_size, split_sampling=args.split_sampling)
             forest.grow_trees(args.number_trees)
@@ -78,7 +81,7 @@ def main(args):
     with open(args.output, 'wb') as output_file:
         serialize_forests(forests, output_file)
         
-def create_tree(log_level, csv_input_file, target_column, min_leaf_size, split_sampling):
+def create_tree(log_level, csv_input_file, target_column, min_leaf_size, split_sampling, output_sampling):
     """
     Grows a single-tree forest
     """
@@ -88,7 +91,7 @@ def create_tree(log_level, csv_input_file, target_column, min_leaf_size, split_s
     factory = TrainingSetFactory()
     tree = None
     with open(csv_input_file, 'r') as input_file:
-        data = factory.train_csv(input_file, target_name=target_column)
+        data = factory.train_csv(input_file, target_name=target_column, output_sampling=output_sampling)
         forest = RandomForest()
         forest.set_training_data(data, target_column, min_count=min_leaf_size, split_sampling=split_sampling)
         tree = forest.grow_tree()
@@ -140,6 +143,11 @@ if __name__ == '__main__':
         type=int,
         default=20,
         help='number of samples used when selecting a split')
+
+    parser.add_argument('-s', '--output-sampling',
+        type=int,
+        default=5,
+        help='number of categories for output sampling')
 
     parser.add_argument('-l', '--log-level',
         type=str,

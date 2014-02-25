@@ -11,7 +11,7 @@ from predict.decisiontree import tools
 
 class TrainingSetFactory(object):
 
-    def train_csv(self, input_file, target_name='target'):
+    def train_csv(self, input_file, target_name='target', output_sampling=5):
         import csv
         _LOG.info('loading training set')
         ts = TrainingSet()
@@ -30,7 +30,7 @@ class TrainingSetFactory(object):
 
             ts.insert(row)
 
-        ts.end_insert(target_name)
+        ts.end_insert(target_name, output_sampling)
         _LOG.info('training set: %d samples and %d dimensions loaded' % (ts.count(), len(header)))
         return ts
 
@@ -96,11 +96,12 @@ class TrainingSet(object):
     def insert(self, entry):
         self.items.append(entry)
 
-    def end_insert(self, output_column):
+    def end_insert(self, output_column, output_sampling):
         output_index = self.index[output_column]
         outputs = [item[output_index] for item in self.get_items()]
         self.output_min = min(outputs)
         self.output_max = max(outputs)
+        self.output_sampling = output_sampling
 
     def get_dimensions(self):
         """Get all table attributes."""
@@ -129,36 +130,26 @@ class TrainingSet(object):
     def fetch(self, dim):
         return self.items[self.index[dim]]
 
-    def variance(self, dim):
-        assert len(self.items) > 0, 'no variance for an empty set'
-        return self.statistics(dim)[1]
-
     def median(self, dim):
         """
         Computes the median for a dimension
         """
         assert len(self.items) > 0, 'no median for an empty set'
-        return self.statistics(dim)[2]
+        return self.statistics(dim)[0]
 
     def entropy(self, dim):
         assert len(self.items) > 0, 'no entropy for an empty set'
-        return self.statistics(dim)[3]
+        return self.statistics(dim)[1]
 
     def statistics(self, dim):
         """
-        Computes the statistics (mean, variance) for a dimension
+        Computes the statistics (median, entropy) for a dimension
         """
-        assert len(self.items) > 0, 'Trying to compute variance of an empty set'
+        assert len(self.items) > 0, 'Trying to compute statistics of an empty set'
         if not self._statistics.has_key(dim):
-            total = 0.0
-            total_squares = 0.0
             values = self.list_not_null(dim)
             if len(values) == 0:
                 return (None, None, None)
-                
-            for value in values:
-                total += value
-                total_squares += value**2
                 
             median = None
             if len(values) & 1:
@@ -169,10 +160,8 @@ class TrainingSet(object):
                 # even number of items
                 median = 0.5 * (values[len(values) / 2 - 1] + values[len(values) / 2])
             
-            mean = float(total) / len(values)
-            variance = float(total_squares) / len(values) - mean**2
-            entropy = tools.entropy(values, self.output_min, self.output_max, accuracy=20)
-            self._statistics[dim] = (mean, variance, median, entropy)
+            entropy = tools.entropy(values, self.output_min, self.output_max, accuracy=self.output_sampling)
+            self._statistics[dim] = (median, entropy)
             
         return self._statistics[dim]
 
@@ -192,6 +181,9 @@ class TrainingSet(object):
     def create_child_table(self):
         ts = TrainingSet()
         ts.set_dimensions(self.get_dimensions())
+        ts.output_sampling = self.output_sampling
+        ts.output_min = self.output_min
+        ts.output_max = self.output_max
         return ts
 
     def split(self, dimension, split_val):

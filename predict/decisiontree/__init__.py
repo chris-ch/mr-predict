@@ -54,48 +54,41 @@ class DecisionTreeFactory(object):
             node = LeafDecisionNode(leaf_value)
         
         else:
-            significant_dimensions = self._keep_significant_dimensions(self.dimensions, table)
-            if len(significant_dimensions) == 0:
+            best_split, best_dimension, best_value = self._select_split(self.dimensions, table)
+            if best_split is None:
+                _LOG.debug('-------B1')
                 leaf_value = table.median(self.target)
-                _LOG.info('no significant dimension, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
+                _LOG.info('no convenient split found, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
                 node = LeafDecisionNode(leaf_value)
-                
-            else:    
-                best_split, best_dimension, best_value = self._select_split(significant_dimensions, table)
-                if best_split is None:
-                    _LOG.debug('-------B1')
+            else:
+                _LOG.debug('-------B2')
+                gain = 1. - best_split['score'] / table.entropy(self.target)
+                if gain <= self.min_split_gain:
+                    _LOG.debug('-------C1')
                     leaf_value = table.median(self.target)
-                    _LOG.info('no convenient split found, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
+                    _LOG.info('gain too low, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
                     node = LeafDecisionNode(leaf_value)
+                    
                 else:
-                    _LOG.debug('-------B2')
-                    gain = 1. - best_split['score'] / table.entropy(self.target)
-                    if gain <= self.min_split_gain:
-                        _LOG.debug('-------C1')
+                    _LOG.debug('-------C2')
+                    if best_split['left_table'].count() == 0 or best_split['right_table'].count() == 0:
+                        _LOG.debug('-------D1')
                         leaf_value = table.median(self.target)
-                        _LOG.info('gain too low, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
+                        _LOG.info('all elements on a single side, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
                         node = LeafDecisionNode(leaf_value)
                         
                     else:
-                        _LOG.debug('-------C2')
-                        if best_split['left_table'].count() == 0 or best_split['right_table'].count() == 0:
-                            _LOG.debug('-------D1')
-                            leaf_value = table.median(self.target)
-                            _LOG.info('all elements on a single side, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
-                            node = LeafDecisionNode(leaf_value)
-                            
-                        else:
-                            _LOG.debug('-------D2')
-                            _LOG.info('creating left subnode based on split %s' % best_split)
-                            left_node = self._load_node(best_split['left_table'])
-                            _LOG.info('creating right subnode based on split %s' % best_split)
-                            right_node = self._load_node(best_split['right_table'])
-                            _LOG.info('new decision node splitting %d / %d' % (best_split['left_table'].count(), best_split['right_table'].count()))
-                            node = DecisionNode(split_value=best_value,
-                                    split_dimension=best_dimension,
-                                    left_node=left_node,
-                                    right_node=right_node
-                                    )
+                        _LOG.debug('-------D2')
+                        _LOG.info('creating left subnode based on split %s' % best_split)
+                        left_node = self._load_node(best_split['left_table'])
+                        _LOG.info('creating right subnode based on split %s' % best_split)
+                        right_node = self._load_node(best_split['right_table'])
+                        _LOG.info('new decision node splitting %d / %d' % (best_split['left_table'].count(), best_split['right_table'].count()))
+                        node = DecisionNode(split_value=best_value,
+                                split_dimension=best_dimension,
+                                left_node=left_node,
+                                right_node=right_node
+                                )
 
         return node
 

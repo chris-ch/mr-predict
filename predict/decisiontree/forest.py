@@ -25,7 +25,7 @@ class RandomForest(object):
         self.trees = []
 
     def set_training_data(self, table, target, inclusion_ratio=.75,
-                 exclude=[], min_count=None, min_gain=None,
+                 exclude=[], min_count=None, min_gain=0.0,
                  split_sampling=50,
                  dimension_significance_threshold=0.5
                  ):
@@ -37,7 +37,7 @@ class RandomForest(object):
         @param inclusion_ratio: fraction of dimensions to use for splitting
         @param exclude: list of attributes to exclude from learning
         @param min_count: threshold for leaf size
-        @param min_gain: minimum gain in variance for splitting
+        @param min_gain: minimum gain in entropy for splitting
         @param split_sampling: number of values to sample when considering a new split on an attribute
 
         """
@@ -76,7 +76,7 @@ class RandomForest(object):
 
     def grow_tree(self):
         """Grow a single tree."""
-        _LOG.debug('growing a new tree')
+        _LOG.info('growing a new tree')
         tree = self.tree_factory.create()
         self.trees.append(tree)
         return tree
