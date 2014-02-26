@@ -58,7 +58,7 @@ def main(args):
         for index in range(args.number_trees):
             status = pool.apply_async(create_tree,
                     (args.log_level, args.csv_input_file, args.target_column, 
-                        args.min_leaf_size, args.split_sampling, ignored),
+                        args.min_leaf_size, args.split_sampling, args.output_sampling, ignored),
                     callback=gather_trees)
             pool_status.append(status)
             
@@ -90,7 +90,7 @@ def main(args):
         serialize_forests(forests, output_file)
         
 def create_tree(log_level, csv_input_file, target_column, min_leaf_size, 
-    split_sampling, output_sampling, ignore_columns, ignored):
+    split_sampling, output_sampling, ignored):
     """
     Grows a single-tree forest
     """
