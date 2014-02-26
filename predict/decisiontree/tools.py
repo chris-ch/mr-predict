@@ -50,6 +50,18 @@ def entropy(x, min_x=None, max_x=None, accuracy=20):
     
     return -e
 
+def median(values):
+    median = None
+    if len(values) & 1:
+        # odd number of items
+        median = values[len(values) / 2]
+        
+    else:
+        # even number of items
+        median = 0.5 * (values[len(values) / 2 - 1] + values[len(values) / 2])
+    
+    return median
+    
 if __name__ == '__main__':
     import random
     ones = [1, 0, 1, 1, 1, 1, 1, 0, 1, 1]

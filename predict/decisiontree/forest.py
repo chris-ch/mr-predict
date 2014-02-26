@@ -89,7 +89,7 @@ class RandomForest(object):
     def use_trees(self, trees):
         self.trees += trees
 
-    def predict(self, sample):
+    def predict(self, sample, use_median=False):
         """
         Predicts the regressand for a new sample
         """
@@ -100,8 +100,26 @@ class RandomForest(object):
                 predictions.append(prediction)
 
         if len(predictions) == 0:
-            #_LOG.info('no tree was able to predict an output for sample: %s' % sample)
+            _LOG.warn('no tree was able to predict an output for sample: %s' % sample)
             return None
 
-        return float(sum(predictions)) / len(predictions)
+        def median(values):
+            median = None
+            if len(values) & 1:
+                # odd number of items
+                median = values[len(values) / 2]
+                
+            else:
+                # even number of items
+                median = 0.5 * (values[len(values) / 2 - 1] + values[len(values) / 2])
+            
+            return median
+        
+        if use_median:
+            output = median(predictions)
+            
+        else:
+            output = float(sum(predictions)) / len(predictions)
+        
+        return output
 

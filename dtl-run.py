@@ -67,7 +67,7 @@ def main(args):
                 except ValueError:
                     pass
 
-            value = forest.predict(sample)
+            value = forest.predict(sample, use_median=args.use_median)
             out.writerow([sample_id, value])
 
     if args.check:
@@ -120,6 +120,10 @@ if __name__ == '__main__':
         type=str,
         default='target',
         help='name of the ouput column')
+
+    parser.add_argument('-m', '--use-median',
+        action='store_true',
+        help='using median for aggregating forests output')
 
     parser.add_argument('-l', '--log-level',
         type=str,

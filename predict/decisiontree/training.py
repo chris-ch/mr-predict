@@ -150,16 +150,8 @@ class TrainingSet(object):
             values = self.list_not_null(dim)
             if len(values) == 0:
                 return (None, None, None)
-                
-            median = None
-            if len(values) & 1:
-                # odd number of items
-                median = values[len(values) / 2]
-                
-            else:
-                # even number of items
-                median = 0.5 * (values[len(values) / 2 - 1] + values[len(values) / 2])
-            
+
+            median = tools.median(values)
             entropy = tools.entropy(values, self.output_min, self.output_max, accuracy=self.output_sampling)
             self._statistics[dim] = (median, entropy)
             
