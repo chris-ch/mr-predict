@@ -38,7 +38,10 @@ def main(args):
     workers_count = args.multiprocessing
     
     ignored = list()
-    
+    if args.ignore_columns:
+        with open(args.ignore_columns, 'r') as file_ignore:
+            ignored = [line.rstrip() for line in file_ignore]
+            
     if workers_count:
         import multiprocessing as mp
         mp.log_to_stderr(logging.INFO)
@@ -76,7 +79,7 @@ def main(args):
         forests = None
         with open(args.csv_input_file, 'r') as input_file:
             data = factory.train_csv(input_file, target_name=args.target_column, 
-                output_sampling=args.output_sampling, ignored_columns=ignored)
+                output_sampling=args.output_sampling, ignore_columns=ignored)
             forest = RandomForest()
             forest.set_training_data(data, args.target_column, 
                 min_count=args.min_leaf_size, split_sampling=args.split_sampling)
