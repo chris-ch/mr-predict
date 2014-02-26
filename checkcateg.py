@@ -16,28 +16,23 @@ def as_int(s):
     except ValueError:
         return None
         
-def csv_statistics(has_header, categories_limit, filename=None, keepers=None, out=sys.stdout):
+MIN = 0
+MAX = 1
+MEAN = 2
+UNIQUE = 3
+NA = 4
+    
+def csv_statistics(csvfile, has_header, categories_limit, filename=None, keepers=None, out=sys.stdout):
         
-    MIN = 0
-    MAX = 1
-    MEAN = 2
-    UNIQUE = 3
-    NA = 4
     def init_stats():
         return [None, None, None, set(), 0]
     
     if keepers is None:
-        keepers = set()
+        new_keepers = set()
         
     else:
-        keepers = set(keepers)
+        new_keepers = set(keepers)
     
-    if filename:
-        csvfile = open(filename, 'rb')
-        
-    else:
-        csvfile = sys.stdin
-        
     dialect = csv.Sniffer().sniff(csvfile.read(1024))
     csvfile.seek(0)
     rows = csv.reader(csvfile, dialect)
@@ -68,7 +63,7 @@ def csv_statistics(has_header, categories_limit, filename=None, keepers=None, ou
             else:
                 # number
                 if as_int(cell) is None:
-                    keepers.add(col_key(index))
+                    new_keepers.add(col_key(index))
                     value = as_number(cell)
                     
                 else:
@@ -102,10 +97,21 @@ def csv_statistics(has_header, categories_limit, filename=None, keepers=None, ou
     
     inv_unicity_check = {v:k for k, v in unicity_check.items()}
     unique_columns = inv_unicity_check.values()
-    
-    # restarts input and generates output
+    # resets input file
     csvfile.seek(0)
     
+    return new_keepers, unique_columns, headers, stats
+    
+def generate_output(csvfile, has_header, categories_limit, keepers, unique_columns, headers, stats):
+    
+    def col_key(index):
+        if not has_header: return index
+            
+        else:
+            return headers[index]
+            
+    dialect = csv.Sniffer().sniff(csvfile.read(1024))
+    csvfile.seek(0)
     rows = csv.reader(csvfile, dialect)
     writer = csv.writer(sys.stdout)
     if has_header:
@@ -153,7 +159,14 @@ def main(filename=None):
     # max number beyond which dimension is not considered as a category
     categories_limit = 50
     
-    csv_statistics(has_header, categories_limit, filename=filename, keepers=('loss', ))
+    if filename:
+        csvfile = open(filename, 'rb')
+        
+    else:
+        csvfile = sys.stdin
+        
+    keepers, unique_columns, headers, stats = csv_statistics(csvfile, has_header, categories_limit, filename=filename, keepers=('loss', ))
+    generate_output(csvfile, has_header, categories_limit, keepers, unique_columns, headers, stats)
     
 if __name__ == '__main__':
 	filename = None
