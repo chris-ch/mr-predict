@@ -93,16 +93,6 @@ class DecisionTreeFactory(object):
 
         return node
 
-    def _keep_significant_dimensions(self, dimensions, table):
-        significant_dimensions = []
-        for dimension in dimensions:
-            # checks size of sample for which measure is known
-            significance_ratio = float(table.count_not_null(dimension)) / float(table.count())
-            if  significance_ratio >= self.dimension_significance_threshold:
-                significant_dimensions.append(dimension)
-        
-        return significant_dimensions
-
     def _select_split(self, tree_dimensions, table):
         """ Restricting the dimensions prevents cross-correlation in Random Forests """
         dimensions = random.sample(tree_dimensions, self.dimensions_split_size)

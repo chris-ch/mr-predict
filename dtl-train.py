@@ -37,6 +37,8 @@ def main(args):
     config_logging(args.log_level)
     workers_count = args.multiprocessing
     
+    ignored = list()
+    
     if workers_count:
         import multiprocessing as mp
         mp.log_to_stderr(logging.INFO)
@@ -52,7 +54,8 @@ def main(args):
         pool_status = list()
         for index in range(args.number_trees):
             status = pool.apply_async(create_tree,
-                    (args.log_level, args.csv_input_file, args.target_column, args.min_leaf_size, args.split_sampling),
+                    (args.log_level, args.csv_input_file, args.target_column, 
+                        args.min_leaf_size, args.split_sampling, ignored),
                     callback=gather_trees)
             pool_status.append(status)
             
@@ -72,16 +75,19 @@ def main(args):
         factory = TrainingSetFactory()
         forests = None
         with open(args.csv_input_file, 'r') as input_file:
-            data = factory.train_csv(input_file, target_name=args.target_column, output_sampling=args.output_sampling)
+            data = factory.train_csv(input_file, target_name=args.target_column, 
+                output_sampling=args.output_sampling, ignored_columns=ignored)
             forest = RandomForest()
-            forest.set_training_data(data, args.target_column, min_count=args.min_leaf_size, split_sampling=args.split_sampling)
+            forest.set_training_data(data, args.target_column, 
+                min_count=args.min_leaf_size, split_sampling=args.split_sampling)
             forest.grow_trees(args.number_trees)
             forests = [forest]
     
     with open(args.output, 'wb') as output_file:
         serialize_forests(forests, output_file)
         
-def create_tree(log_level, csv_input_file, target_column, min_leaf_size, split_sampling, output_sampling):
+def create_tree(log_level, csv_input_file, target_column, min_leaf_size, 
+    split_sampling, output_sampling, ignore_columns, ignored):
     """
     Grows a single-tree forest
     """
@@ -91,7 +97,7 @@ def create_tree(log_level, csv_input_file, target_column, min_leaf_size, split_s
     factory = TrainingSetFactory()
     tree = None
     with open(csv_input_file, 'r') as input_file:
-        data = factory.train_csv(input_file, target_name=target_column, output_sampling=output_sampling)
+        data = factory.train_csv(input_file, target_name=target_column, output_sampling=output_sampling, ignore_columns=ignored)
         forest = RandomForest()
         forest.set_training_data(data, target_column, min_count=min_leaf_size, split_sampling=split_sampling)
         tree = forest.grow_tree()
@@ -148,6 +154,10 @@ if __name__ == '__main__':
         type=int,
         default=5,
         help='number of categories for output sampling')
+
+    parser.add_argument('-i', '--ignore-columns',
+        type=str,
+        help='file containing a list of columns to be ignored')
 
     parser.add_argument('-l', '--log-level',
         type=str,

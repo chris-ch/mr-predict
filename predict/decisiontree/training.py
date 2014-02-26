@@ -11,9 +11,12 @@ from predict.decisiontree import tools
 
 class TrainingSetFactory(object):
 
-    def train_csv(self, input_file, target_name='target', output_sampling=5):
+    def train_csv(self, input_file, target_name='target', output_sampling=5, ignore_columns=None):
         import csv
         _LOG.info('loading training set')
+        if ignore_columns is None:
+            ignore_columns = list()
+            
         ts = TrainingSet()
         input_data = csv.reader(input_file, delimiter=',')
         header = next(input_data)[1:]
