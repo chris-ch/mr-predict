@@ -27,6 +27,7 @@ class DecisionTreeFactory(object):
         self.table = table
         self.exclude = exclude
         self.target = target
+        min_items_count = max(2, min_items_count) # no need to go below 2
         self.min_items_count = min_items_count
         self.min_split_gain = min_split_gain
         self.samples_split_size = samples_split_size
