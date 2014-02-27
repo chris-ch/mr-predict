@@ -80,11 +80,11 @@ class DecisionTreeFactory(object):
                         
                     else:
                         _LOG.debug('-------D2')
-                        _LOG.info('creating left subnode based on split %s' % best_split)
+                        _LOG.debug('creating left subnode based on split %s' % best_split)
                         left_node = self._load_node(best_split['left_table'])
-                        _LOG.info('creating right subnode based on split %s' % best_split)
+                        _LOG.debug('creating right subnode based on split %s' % best_split)
                         right_node = self._load_node(best_split['right_table'])
-                        _LOG.info('new decision node splitting %d / %d' % (best_split['left_table'].count(), best_split['right_table'].count()))
+                        _LOG.info('new decision node splitting %d / %d (score %.2f)' % (best_split['left_table'].count(), best_split['right_table'].count(), best_split['score']))
                         node = DecisionNode(split_value=best_value,
                                 split_dimension=best_dimension,
                                 left_node=left_node,

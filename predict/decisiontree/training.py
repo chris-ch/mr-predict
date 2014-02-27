@@ -19,13 +19,16 @@ class TrainingSetFactory(object):
             
         ts = TrainingSet()
         input_data = csv.reader(input_file, delimiter=',')
-        header = [label for label in next(input_data)[1:] if label not in ignore_columns]
-            
+        first_row = next(input_data)[1:]
+        header = [label for label in first_row if label not in ignore_columns]
+        header_index = set([index for index, label in enumerate(first_row) if label not in ignore_columns])
+         
         assert target_name in header, 'target column "%s" is missing in input dataset' % target_name
         ts.set_dimensions(header)
-        for columns in (label for label in input_data if label not in ignore_columns):
+        for columns in input_data:
             row = list()
-            for cell in columns[1:]:
+            for index, cell in enumerate(columns[1:]):
+                if index not in header_index: continue
                 try:
                     row.append(float(cell))
 
