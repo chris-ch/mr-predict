@@ -2,7 +2,7 @@ import random
 import logging
 import argparse
 import csv
-from predict.decisiontree.training import TrainingSetFactory
+import codecs
 
 def file_len(f):
     for i, l in enumerate(f):
@@ -13,7 +13,8 @@ def file_len(f):
 
 def main(args):
     # splits the input file in various buckets for testing quality of training
-    input_file = args.csv_input_file
+    input_file = codecs.open(args.csv_input_file, 'rU', 'utf-16')
+    
     input_file_size = file_len(input_file)
 
     leftover_size = int(float(args.leftover_ratio_pct) * input_file_size / 100.0)
@@ -34,9 +35,10 @@ def main(args):
     output_file.write(','.join([id_column] + [column for column in headers if column != args.target_column]) + '\n')
     check_file.write(','.join([first_line[0], args.target_column]) + '\n')
     for index, row in enumerate(input_rows):
-    	if len(row) != expected_row_size:
+    	if len(row) not in (0, expected_row_size):
     		logging.warning('ignoring row with unexpected size: %d (expected %d)' % (len(row), expected_row_size))
     		continue
+    		
         if index in leftovers:
             # this becomes a test sample
             columns = row[1:]
@@ -52,6 +54,7 @@ def main(args):
             # this becomes a training sample
             training_file.write(','.join(row) + '\n')
 
+    input_file.close()
     output_file.close()
     check_file.close()
     training_file.close()
@@ -81,7 +84,7 @@ if __name__ == '__main__':
         help='size of leftover set in percent, relative to whole training file size')
 
     parser.add_argument('csv_input_file',
-        type=argparse.FileType('r'),
+        type=str,
         help='CSV file (including header) with list of samples. First column serves as id for the samples')
 
     parser.add_argument('-t', '--target-column',
