@@ -111,15 +111,17 @@ class TrainingSet(object):
         if not self._statistics.has_key(dim):
             values = self._get_list_not_null(dim)
             if len(values) == 0:
-                return (None, None, None)
+                (median, entropy) = (None, None)
 
-            median = tools.median(values)
-            entropy = tools.entropy(values, self._output_min, self._output_max, accuracy=self._output_sampling)
+            else:
+                median = tools.median(values)
+                entropy = tools.entropy(values, self._output_min, self._output_max, accuracy=self._output_sampling)
+                
             self._statistics[dim] = (median, entropy)
             
         return self._statistics[dim]
 
-    def get_items(self):
+    def _get_items(self):
         return self._items
 
     def set_dimensions(self, dimensions):
@@ -132,9 +134,15 @@ class TrainingSet(object):
 
     def end_insert(self, output_column, output_sampling):
         output_index = self._index[output_column]
-        outputs = [item[output_index] for item in self.get_items()]
-        self._output_min = min(outputs)
-        self._output_max = max(outputs)
+        
+        def items():
+            for item in self._get_items():
+                yield item[output_index]
+                
+        self._output_min = min(items())
+        self._output_max = max(items())
+        _LOG.info('output min = %s' % self._output_min)
+        _LOG.info('output max = %s' % self._output_max)
         self._output_sampling = output_sampling
 
     def fetch(self, item, dim):
@@ -142,10 +150,10 @@ class TrainingSet(object):
 
     def count(self):
         """Counts the number of rows in the table."""
-        return len(self.get_items())
+        return len(self._get_items())
 
     def random_split(self, set_left, set_right):
-        for item in self.get_items():
+        for item in self._get_items():
             random.choice([set_left, set_right]).insert(item)
             
     def get_dimensions(self):
@@ -171,7 +179,7 @@ class TrainingSet(object):
         """
         index = self._index[dimension]
         sample_size = min(sample_size, self.count())
-        return [item[index] for item in random.sample(self.get_items(), sample_size)]
+        return [item[index] for item in random.sample(self._get_items(), sample_size)]
 
     def create_child_table(self):
         ts = TrainingSet()
@@ -194,7 +202,7 @@ class TrainingSet(object):
         right_table = self.create_child_table()
         null_table = self.create_child_table()
         index = self._index[dimension]
-        for entry in self.get_items():
+        for entry in self._get_items():
             if entry[index] is None:
                 null_table.insert(entry)
                 
@@ -219,7 +227,7 @@ class TrainingSet(object):
         field_names = ['id'] + dimensions
         csv_writer = csv.DictWriter(csv_file, fieldnames=field_names, dialect='excel')
         csv_writer.writeheader()
-        for item_id, item in enumerate(self.get_items()):
+        for item_id, item in enumerate(self._get_items()):
             row_data = dict()
             row_data['id'] = item_id
             for dim in dimensions:
