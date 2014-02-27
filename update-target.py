@@ -10,7 +10,7 @@ def main(args):
         output.writerow(headers)
         for row in rows:
             target = float(row[-1])
-            row[-1] = (0, 1)[ target > 1.0 ]
+            row[-1] = (0, 1)[ target > 0.0 ]
             output.writerow(row)
 
 if __name__ == '__main__':
