@@ -1,4 +1,6 @@
 import math
+import logging
+_LOG = logging.getLogger('tools')
 
 def elog(x):
     """
@@ -27,7 +29,7 @@ def histogram(x, bins, min_x=None, max_x=None):
         
     return h
 
-def entropy(x, min_x, max_x, accuracy=20):
+def entropy(x, min_x=None, max_x=None, accuracy=20):
     """
     Entropy of a list of float values.
     """
@@ -39,15 +41,29 @@ def entropy(x, min_x, max_x, accuracy=20):
         
     if min_x == max_x:
         return 0.0
-        
+    
     bins = histogram(x, accuracy, min_x=min_x, max_x=max_x)
     e = 0.0
     for bin in bins:
-        e += elog(float(bin) / len(bins))
+        probability = float(bin) / len(x)
+        e += elog(probability)
     
     return -e
 
+def median(values):
+    median = None
+    if len(values) & 1:
+        # odd number of items
+        median = values[len(values) / 2]
+        
+    else:
+        # even number of items
+        median = 0.5 * (values[len(values) / 2 - 1] + values[len(values) / 2])
+    
+    return median
+    
 if __name__ == '__main__':
+    import random
     ones = [1, 0, 1, 1, 1, 1, 1, 0, 1, 1]
     zeros = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
     print 'both', entropy(ones + zeros, 0, 100)
@@ -55,4 +71,8 @@ if __name__ == '__main__':
     print 'zeros', entropy(zeros, 0, 1)
     alpha = float(len(ones)) / float(len(ones) + len(zeros))
     print 'total', alpha * entropy(ones, 0, 1) + (1.0 - alpha) * entropy(zeros, 0, 1)
+    print entropy([0, 0, 1, 0, 0, 0, 0, 0, 0, 0], 0, 1)
+    print entropy([0, 0, 100, 0, 0, 0, 0, 0, 0, 0], 0, 100)
+    print entropy([0, 0, 1, 0, 0, 0, 0, 0, 0, 0], 0, 100)
+    print entropy([random.randint(1, 11) for x in range(11)] + zeros + ones , 0, 11, accuracy=11)
     

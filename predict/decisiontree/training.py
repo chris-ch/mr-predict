@@ -11,17 +11,24 @@ from predict.decisiontree import tools
 
 class TrainingSetFactory(object):
 
-    def train_csv(self, input_file, target_name='target'):
+    def train_csv(self, input_file, target_name='target', output_sampling=5, ignore_columns=None):
         import csv
         _LOG.info('loading training set')
+        if ignore_columns is None:
+            ignore_columns = list()
+            
         ts = TrainingSet()
         input_data = csv.reader(input_file, delimiter=',')
-        header = next(input_data)[1:]
+        first_row = next(input_data)[1:]
+        header = [label for label in first_row if label not in ignore_columns]
+        header_index = set([index for index, label in enumerate(first_row) if label not in ignore_columns])
+         
         assert target_name in header, 'target column "%s" is missing in input dataset' % target_name
         ts.set_dimensions(header)
         for columns in input_data:
             row = list()
-            for cell in columns[1:]:
+            for index, cell in enumerate(columns[1:]):
+                if index not in header_index: continue
                 try:
                     row.append(float(cell))
 
@@ -30,7 +37,7 @@ class TrainingSetFactory(object):
 
             ts.insert(row)
 
-        ts.end_insert(target_name)
+        ts.end_insert(target_name, output_sampling)
         _LOG.info('training set: %d samples and %d dimensions loaded' % (ts.count(), len(header)))
         return ts
 
@@ -68,7 +75,6 @@ class TrainingSetFactory(object):
 
         return loc_table
 
-
 class TrainingSet(object):
 
     """
@@ -77,104 +83,99 @@ class TrainingSet(object):
 
     def __init__(self):
         self._dimensions = list()
-        self.index = dict()
-        self.items = list()
+        self._index = dict()
+        self._items = list()
         # caching
         self._list_not_null = dict()
         self._statistics = dict()
-        self.output_min = None
-        self.output_max = None
+        self._output_min = None
+        self._output_max = None
+        self._output_sampling = None
 
-    def get_items(self):
-        return self.items
-
-    def set_dimensions(self, dimensions):
-        self._dimensions = dimensions
-        for count, dim in enumerate(dimensions):
-            self.index[dim] = count
-    
-    def insert(self, entry):
-        self.items.append(entry)
-
-    def end_insert(self, output_column):
-        output_index = self.index[output_column]
-        outputs = [item[output_index] for item in self.get_items()]
-        self.output_min = min(outputs)
-        self.output_max = max(outputs)
-
-    def get_dimensions(self):
-        """Get all table attributes."""
-        return self._dimensions
-
-    def count(self):
-        """Counts the number of rows in the table."""
-        return len(self.items)
-
-    def count_not_null(self, dim):
-        """Counts the number of rows in the table."""
-        return len(self.list_not_null(dim))
-
-    def list_not_null(self, dim):
+    def _get_list_not_null(self, dim):
         """
         Sorted list of non null values for a specific dimension.
         """
         if not self._list_not_null.has_key(dim):
-            index = self.index[dim]
-            not_null_items = [item[index] for item in self.items
-            if item[index] is not None]                                    
+            index = self._index[dim]
+            not_null_items = [item[index] for item in self._items
+                if item[index] is not None]                                    
             self._list_not_null[dim] = sorted(not_null_items)
             
         return self._list_not_null[dim]
 
-    def fetch(self, dim):
-        return self.items[self.index[dim]]
+    def _get_statistics(self, dim):
+        """
+        Computes the statistics (median, entropy) for a dimension
+        """
+        if not self._statistics.has_key(dim):
+            values = self._get_list_not_null(dim)
+            if len(values) == 0:
+                (median, entropy) = (None, None)
 
-    def variance(self, dim):
-        assert len(self.items) > 0, 'no variance for an empty set'
-        return self.statistics(dim)[1]
+            else:
+                median = tools.median(values)
+                entropy = tools.entropy(values, self._output_min, self._output_max, accuracy=self._output_sampling)
+                
+            self._statistics[dim] = (median, entropy)
+            
+        return self._statistics[dim]
+
+    def _get_items(self):
+        return self._items
+
+    def _create_child_table(self):
+        ts = TrainingSet()
+        ts.set_dimensions(self.get_dimensions())
+        ts._output_sampling = self._output_sampling
+        ts._output_min = self._output_min
+        ts._output_max = self._output_max
+        return ts
+
+    def set_dimensions(self, dimensions):
+        self._dimensions = dimensions
+        for count, dim in enumerate(dimensions):
+            self._index[dim] = count
+    
+    def insert(self, entry):
+        self._items.append(entry)
+
+    def end_insert(self, output_column, output_sampling):
+        output_index = self._index[output_column]
+        
+        def items():
+            for item in self._get_items():
+                yield item[output_index]
+                
+        self._output_min = min(items())
+        self._output_max = max(items())
+        _LOG.info('output min = %s' % self._output_min)
+        _LOG.info('output max = %s' % self._output_max)
+        self._output_sampling = output_sampling
+
+    def fetch(self, item, dim):
+        return item[self._index[dim]]
+
+    def count(self):
+        """Counts the number of rows in the table."""
+        return len(self._get_items())
+
+    def random_split(self, set_left, set_right):
+        for item in self._get_items():
+            random.choice([set_left, set_right]).insert(item)
+            
+    def get_dimensions(self):
+        """Gets all defined dimensions"""
+        return self._dimensions
 
     def median(self, dim):
         """
         Computes the median for a dimension
         """
-        assert len(self.items) > 0, 'no median for an empty set'
-        return self.statistics(dim)[2]
+        return self._get_statistics(dim)[0]
 
     def entropy(self, dim):
-        assert len(self.items) > 0, 'no entropy for an empty set'
-        return self.statistics(dim)[3]
-
-    def statistics(self, dim):
-        """
-        Computes the statistics (mean, variance) for a dimension
-        """
-        assert len(self.items) > 0, 'Trying to compute variance of an empty set'
-        if not self._statistics.has_key(dim):
-            total = 0.0
-            total_squares = 0.0
-            values = self.list_not_null(dim)
-            if len(values) == 0:
-                return (None, None, None)
-                
-            for value in values:
-                total += value
-                total_squares += value**2
-                
-            median = None
-            if len(values) & 1:
-                # odd number of items
-                median = values[len(values) / 2]
-                
-            else:
-                # even number of items
-                median = 0.5 * (values[len(values) / 2 - 1] + values[len(values) / 2])
-            
-            mean = float(total) / len(values)
-            variance = float(total_squares) / len(values) - mean**2
-            entropy = tools.entropy(values, self.output_min, self.output_max, accuracy=20)
-            self._statistics[dim] = (mean, variance, median, entropy)
-            
-        return self._statistics[dim]
+        return self._get_statistics(dim)[1]
 
     def sample_measures(self, dimension, sample_size):
         """
@@ -184,34 +185,28 @@ class TrainingSet(object):
         @param sample_size: number of values to sample
 
         """
-        assert len(self.items) > 0, 'Trying to sample an empty table'
-        index = self.index[dimension]
-        sample_size = min(sample_size, len(self.items))
-        return [item[index] for item in random.sample(self.items, sample_size)]
+        index = self._index[dimension]
+        sample_size = min(sample_size, self.count())
+        return [item[index] for item in random.sample(self._get_items(), sample_size)]
 
-    def create_child_table(self):
-        ts = TrainingSet()
-        ts.set_dimensions(self.get_dimensions())
-        return ts
-
-    def split(self, dimension, split_val):
+    def split(self, dimension, split_value):
         """Split according to a given dimension and a split value.
-        Returns a 3-uple of tables: one for values <= split_val, one for
+        Returns a 3-uple of tables: one for values <= split_value, one for
         values > split_val and one for undef values of the dimension.
 
         @param dimension: dimension to split on
-        @param split_val: split value
+        @param split_value: split value
 
         """
-        left_table = self.create_child_table()
-        right_table = self.create_child_table()
-        null_table = self.create_child_table()
-        index = self.index[dimension]
-        for entry in self.items:
+        left_table = self._create_child_table()
+        right_table = self._create_child_table()
+        null_table = self._create_child_table()
+        index = self._index[dimension]
+        for entry in self._get_items():
             if entry[index] is None:
                 null_table.insert(entry)
                 
-            elif entry[index] <= split_val:
+            elif entry[index] <= split_value:
                 left_table.insert(entry)
 
             else:
@@ -232,14 +227,14 @@ class TrainingSet(object):
         field_names = ['id'] + dimensions
         csv_writer = csv.DictWriter(csv_file, fieldnames=field_names, dialect='excel')
         csv_writer.writeheader()
-        for item_id, item in enumerate(self.items):
+        for item_id, item in enumerate(self._get_items()):
             row_data = dict()
             row_data['id'] = item_id
             for dim in dimensions:
-                row_data[dim] = item.fetch(dim)
+                row_data[dim] = self.fetch(item, dim)
 
             csv_writer.writerow(row_data)
 
     def __repr__(self):
         return '[set of %d rows]' % self.count()
-
+        

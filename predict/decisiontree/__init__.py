@@ -27,12 +27,15 @@ class DecisionTreeFactory(object):
         self.table = table
         self.exclude = exclude
         self.target = target
+        min_items_count = max(2, min_items_count) # no need to go below 2
         self.min_items_count = min_items_count
+        _LOG.info('no split on groups below %d samples' % self.min_items_count)
         self.min_split_gain = min_split_gain
         self.samples_split_size = samples_split_size
         self.dimensions = [dim for dim in self.table.get_dimensions()
                       if dim != self.target and dim not in self.exclude]
-        self.dimensions_split_size = min(int(inclusion_ratio * len(self.dimensions)), 1)
+        self.dimensions_split_size = max(int(inclusion_ratio * len(self.dimensions)), 1)
+        _LOG.info('the algorithm will be testing %d dimensions at each node for the best split' % self.dimensions_split_size)
         self.dimension_significance_threshold = dimension_significance_threshold
 
     def create(self):
@@ -45,69 +48,56 @@ class DecisionTreeFactory(object):
         """
         if table.count() < self.min_items_count:
             leaf_value = table.median(self.target)
-            _LOG.info('low data size reached (%d), creating new leaf node with value %s' % (table.count(), leaf_value))
+            _LOG.info('low limit reached (%d), creating new leaf node for value %s' % (table.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
             
         elif table.entropy(self.target) == 0.:
             leaf_value = table.median(self.target)
-            _LOG.info('output identical for all %d elements with value %s' % (table.count(), leaf_value))
+            _LOG.info('output identical for all %d elements, creating new leaf node for value %s' % (table.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
         
         else:
-            significant_dimensions = self._keep_significant_dimensions(self.dimensions, table)
-            if len(significant_dimensions) == 0:
+            _LOG.info('splitting %d elements' % table.count())
+            best_split, best_dimension, best_value = self._select_split(self.dimensions, table)
+            if best_split is None:
+                _LOG.debug('-------B1')
                 leaf_value = table.median(self.target)
-                _LOG.info('no significant dimension, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
+                _LOG.info('no convenient split found, creating new leaf node for %d elements for value %s' % (table.count(), leaf_value))
                 node = LeafDecisionNode(leaf_value)
-                
-            else:    
-                best_split, best_dimension, best_value = self._select_split(significant_dimensions, table)
-                if best_split is None:
-                    _LOG.debug('-------B1')
+            else:
+                _LOG.debug('-------B2')
+                node_entropy = table.entropy(self.target)
+                gain = 1. - best_split['score'] / node_entropy
+                _LOG.info('entropy at current node is %.4f' % (node_entropy))
+                _LOG.info('assessing split %d / %d (score %.4f) creating a gain in entropy of %.1f%%' % (best_split['left_table'].count(), best_split['right_table'].count(), best_split['score'], 100.0 * gain))
+                if gain <= self.min_split_gain:
+                    _LOG.debug('-------C1')
                     leaf_value = table.median(self.target)
-                    _LOG.info('no convenient split found, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
+                    _LOG.info('gain too low, creating new leaf node for %d elements for value %s' % (table.count(), leaf_value))
                     node = LeafDecisionNode(leaf_value)
+                    
                 else:
-                    _LOG.debug('-------B2')
-                    gain = 1. - best_split['score'] / table.entropy(self.target)
-                    if gain <= self.min_split_gain:
-                        _LOG.debug('-------C1')
+                    _LOG.debug('-------C2')
+                    if best_split['left_table'].count() == 0 or best_split['right_table'].count() == 0:
+                        _LOG.debug('-------D1')
                         leaf_value = table.median(self.target)
-                        _LOG.info('gain too low, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
+                        _LOG.info('all elements on a single side, creating new leaf node for %d elements for value %s' % (table.count(), leaf_value))
                         node = LeafDecisionNode(leaf_value)
                         
                     else:
-                        _LOG.debug('-------C2')
-                        if best_split['left_table'].count() == 0 or best_split['right_table'].count() == 0:
-                            _LOG.debug('-------D1')
-                            leaf_value = table.median(self.target)
-                            _LOG.info('all elements on a single side, creating new leaf node for %d elements with value %s' % (table.count(), leaf_value))
-                            node = LeafDecisionNode(leaf_value)
-                            
-                        else:
-                            _LOG.debug('-------D2')
-                            _LOG.info('creating left subnode based on split %s' % best_split)
-                            left_node = self._load_node(best_split['left_table'])
-                            _LOG.info('creating right subnode based on split %s' % best_split)
-                            right_node = self._load_node(best_split['right_table'])
-                            _LOG.info('new decision node splitting %d / %d' % (best_split['left_table'].count(), best_split['right_table'].count()))
-                            node = DecisionNode(split_value=best_value,
-                                    split_dimension=best_dimension,
-                                    left_node=left_node,
-                                    right_node=right_node
-                                    )
+                        _LOG.debug('-------D2')
+                        _LOG.info('assessment succesful: creating split')
+                        _LOG.info('creating left subnode for %d elements' % (best_split['left_table'].count()))
+                        left_node = self._load_node(best_split['left_table'])
+                        _LOG.info('creating right subnode for %d elements' % (best_split['right_table'].count()))
+                        right_node = self._load_node(best_split['right_table'])
+                        node = DecisionNode(split_value=best_value,
+                                split_dimension=best_dimension,
+                                left_node=left_node,
+                                right_node=right_node
+                                )
 
         return node
-
-    def _keep_significant_dimensions(self, dimensions, table):
-        significant_dimensions = []
-        for dimension in dimensions:
-            # checks size of sample for which measure is known
-            significance_ratio = float(table.count_not_null(dimension)) / float(table.count())
-            if  significance_ratio >= self.dimension_significance_threshold:
-                significant_dimensions.append(dimension)
-        
-        return significant_dimensions
 
     def _select_split(self, tree_dimensions, table):
         """ Restricting the dimensions prevents cross-correlation in Random Forests """
@@ -137,8 +127,7 @@ class DecisionTreeFactory(object):
         Splits the provided table along dimension based on split_value.
         """
         left_table, right_table, null_table = table.split(dimension, split_value)
-        for item in null_table.get_items():
-            random.choice([left_table, right_table]).insert(item)
+        null_table.random_split(left_table, right_table)
         
         if left_table.count() == 0 or right_table.count() == 0:
             score = table.entropy(self.target) # score will be unchanged

@@ -24,8 +24,8 @@ class RandomForest(object):
     def __init__(self):
         self.trees = []
 
-    def set_training_data(self, table, target, inclusion_ratio=.75,
-                 exclude=[], min_count=None, min_gain=None,
+    def set_training_data(self, table, target, inclusion_ratio=.1,
+                 exclude=[], min_count=None, min_gain=0.0,
                  split_sampling=50,
                  dimension_significance_threshold=0.5
                  ):
@@ -37,7 +37,7 @@ class RandomForest(object):
         @param inclusion_ratio: fraction of dimensions to use for splitting
         @param exclude: list of attributes to exclude from learning
         @param min_count: threshold for leaf size
-        @param min_gain: minimum gain in variance for splitting
+        @param min_gain: minimum gain in entropy for splitting
         @param split_sampling: number of values to sample when considering a new split on an attribute
 
         """
@@ -76,7 +76,7 @@ class RandomForest(object):
 
     def grow_tree(self):
         """Grow a single tree."""
-        _LOG.debug('growing a new tree')
+        _LOG.info('growing a new tree')
         tree = self.tree_factory.create()
         self.trees.append(tree)
         return tree
@@ -89,7 +89,7 @@ class RandomForest(object):
     def use_trees(self, trees):
         self.trees += trees
 
-    def predict(self, sample):
+    def predict(self, sample, use_median=False):
         """
         Predicts the regressand for a new sample
         """
@@ -100,8 +100,26 @@ class RandomForest(object):
                 predictions.append(prediction)
 
         if len(predictions) == 0:
-            #_LOG.info('no tree was able to predict an output for sample: %s' % sample)
+            _LOG.warn('no tree was able to predict an output for sample: %s' % sample)
             return None
 
-        return float(sum(predictions)) / len(predictions)
+        def median(values):
+            median = None
+            if len(values) & 1:
+                # odd number of items
+                median = values[len(values) / 2]
+                
+            else:
+                # even number of items
+                median = 0.5 * (values[len(values) / 2 - 1] + values[len(values) / 2])
+            
+            return median
+        
+        if use_median:
+            output = median(predictions)
+            
+        else:
+            output = float(sum(predictions)) / len(predictions)
+        
+        return output
 
