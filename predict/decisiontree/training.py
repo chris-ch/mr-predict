@@ -124,6 +124,14 @@ class TrainingSet(object):
     def _get_items(self):
         return self._items
 
+    def _create_child_table(self):
+        ts = TrainingSet()
+        ts.set_dimensions(self.get_dimensions())
+        ts._output_sampling = self._output_sampling
+        ts._output_min = self._output_min
+        ts._output_max = self._output_max
+        return ts
+
     def set_dimensions(self, dimensions):
         self._dimensions = dimensions
         for count, dim in enumerate(dimensions):
@@ -181,14 +189,6 @@ class TrainingSet(object):
         sample_size = min(sample_size, self.count())
         return [item[index] for item in random.sample(self._get_items(), sample_size)]
 
-    def create_child_table(self):
-        ts = TrainingSet()
-        ts.set_dimensions(self.get_dimensions())
-        ts._output_sampling = self._output_sampling
-        ts._output_min = self._output_min
-        ts._output_max = self._output_max
-        return ts
-
     def split(self, dimension, split_value):
         """Split according to a given dimension and a split value.
         Returns a 3-uple of tables: one for values <= split_value, one for
@@ -198,9 +198,9 @@ class TrainingSet(object):
         @param split_value: split value
 
         """
-        left_table = self.create_child_table()
-        right_table = self.create_child_table()
-        null_table = self.create_child_table()
+        left_table = self._create_child_table()
+        right_table = self._create_child_table()
+        null_table = self._create_child_table()
         index = self._index[dimension]
         for entry in self._get_items():
             if entry[index] is None:
