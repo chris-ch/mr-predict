@@ -75,7 +75,6 @@ class TrainingSetFactory(object):
 
         return loc_table
 
-
 class TrainingSet(object):
 
     """
@@ -84,85 +83,83 @@ class TrainingSet(object):
 
     def __init__(self):
         self._dimensions = list()
-        self.index = dict()
-        self.items = list()
+        self._index = dict()
+        self._items = list()
         # caching
         self._list_not_null = dict()
         self._statistics = dict()
-        self.output_min = None
-        self.output_max = None
+        self._output_min = None
+        self._output_max = None
+        self._output_sampling = None
 
-    def get_items(self):
-        return self.items
-
-    def set_dimensions(self, dimensions):
-        self._dimensions = dimensions
-        for count, dim in enumerate(dimensions):
-            self.index[dim] = count
-    
-    def insert(self, entry):
-        self.items.append(entry)
-
-    def end_insert(self, output_column, output_sampling):
-        output_index = self.index[output_column]
-        outputs = [item[output_index] for item in self.get_items()]
-        self.output_min = min(outputs)
-        self.output_max = max(outputs)
-        self.output_sampling = output_sampling
-
-    def get_dimensions(self):
-        """Get all table attributes."""
-        return self._dimensions
-
-    def count(self):
-        """Counts the number of rows in the table."""
-        return len(self.items)
-
-    def count_not_null(self, dim):
-        """Counts the number of rows in the table."""
-        return len(self.list_not_null(dim))
-
-    def list_not_null(self, dim):
+    def _get_list_not_null(self, dim):
         """
         Sorted list of non null values for a specific dimension.
         """
         if not self._list_not_null.has_key(dim):
-            index = self.index[dim]
-            not_null_items = [item[index] for item in self.items
-            if item[index] is not None]                                    
+            index = self._index[dim]
+            not_null_items = [item[index] for item in self._items
+                if item[index] is not None]                                    
             self._list_not_null[dim] = sorted(not_null_items)
             
         return self._list_not_null[dim]
 
-    def fetch(self, dim):
-        return self.items[self.index[dim]]
+    def _get_statistics(self, dim):
+        """
+        Computes the statistics (median, entropy) for a dimension
+        """
+        if not self._statistics.has_key(dim):
+            values = self._get_list_not_null(dim)
+            if len(values) == 0:
+                return (None, None, None)
+
+            median = tools.median(values)
+            entropy = tools.entropy(values, self._output_min, self._output_max, accuracy=self._output_sampling)
+            self._statistics[dim] = (median, entropy)
+            
+        return self._statistics[dim]
+
+    def get_items(self):
+        return self._items
+
+    def set_dimensions(self, dimensions):
+        self._dimensions = dimensions
+        for count, dim in enumerate(dimensions):
+            self._index[dim] = count
+    
+    def insert(self, entry):
+        self._items.append(entry)
+
+    def end_insert(self, output_column, output_sampling):
+        output_index = self._index[output_column]
+        outputs = [item[output_index] for item in self.get_items()]
+        self._output_min = min(outputs)
+        self._output_max = max(outputs)
+        self._output_sampling = output_sampling
+
+    def fetch(self, item, dim):
+        return item[self._index[dim]]
+
+    def count(self):
+        """Counts the number of rows in the table."""
+        return len(self.get_items())
+
+    def random_split(self, set_left, set_right):
+        for item in self.get_items():
+            random.choice([set_left, set_right]).insert(item)
+            
+    def get_dimensions(self):
+        """Gets all defined dimensions"""
+        return self._dimensions
 
     def median(self, dim):
         """
         Computes the median for a dimension
         """
-        assert len(self.items) > 0, 'no median for an empty set'
-        return self.statistics(dim)[0]
+        return self._get_statistics(dim)[0]
 
     def entropy(self, dim):
-        assert len(self.items) > 0, 'no entropy for an empty set'
-        return self.statistics(dim)[1]
-
-    def statistics(self, dim):
-        """
-        Computes the statistics (median, entropy) for a dimension
-        """
-        assert len(self.items) > 0, 'Trying to compute statistics of an empty set'
-        if not self._statistics.has_key(dim):
-            values = self.list_not_null(dim)
-            if len(values) == 0:
-                return (None, None, None)
-
-            median = tools.median(values)
-            entropy = tools.entropy(values, self.output_min, self.output_max, accuracy=self.output_sampling)
-            self._statistics[dim] = (median, entropy)
-            
-        return self._statistics[dim]
+        return self._get_statistics(dim)[1]
 
     def sample_measures(self, dimension, sample_size):
         """
@@ -172,37 +169,36 @@ class TrainingSet(object):
         @param sample_size: number of values to sample
 
         """
-        assert len(self.items) > 0, 'Trying to sample an empty table'
-        index = self.index[dimension]
-        sample_size = min(sample_size, len(self.items))
-        return [item[index] for item in random.sample(self.items, sample_size)]
+        index = self._index[dimension]
+        sample_size = min(sample_size, self.count())
+        return [item[index] for item in random.sample(self.get_items(), sample_size)]
 
     def create_child_table(self):
         ts = TrainingSet()
         ts.set_dimensions(self.get_dimensions())
-        ts.output_sampling = self.output_sampling
-        ts.output_min = self.output_min
-        ts.output_max = self.output_max
+        ts._output_sampling = self._output_sampling
+        ts._output_min = self._output_min
+        ts._output_max = self._output_max
         return ts
 
-    def split(self, dimension, split_val):
+    def split(self, dimension, split_value):
         """Split according to a given dimension and a split value.
-        Returns a 3-uple of tables: one for values <= split_val, one for
+        Returns a 3-uple of tables: one for values <= split_value, one for
         values > split_val and one for undef values of the dimension.
 
         @param dimension: dimension to split on
-        @param split_val: split value
+        @param split_value: split value
 
         """
         left_table = self.create_child_table()
         right_table = self.create_child_table()
         null_table = self.create_child_table()
-        index = self.index[dimension]
-        for entry in self.items:
+        index = self._index[dimension]
+        for entry in self.get_items():
             if entry[index] is None:
                 null_table.insert(entry)
                 
-            elif entry[index] <= split_val:
+            elif entry[index] <= split_value:
                 left_table.insert(entry)
 
             else:
@@ -223,14 +219,14 @@ class TrainingSet(object):
         field_names = ['id'] + dimensions
         csv_writer = csv.DictWriter(csv_file, fieldnames=field_names, dialect='excel')
         csv_writer.writeheader()
-        for item_id, item in enumerate(self.items):
+        for item_id, item in enumerate(self.get_items()):
             row_data = dict()
             row_data['id'] = item_id
             for dim in dimensions:
-                row_data[dim] = item.fetch(dim)
+                row_data[dim] = self.fetch(item, dim)
 
             csv_writer.writerow(row_data)
 
     def __repr__(self):
         return '[set of %d rows]' % self.count()
-
+        

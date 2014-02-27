@@ -127,8 +127,7 @@ class DecisionTreeFactory(object):
         Splits the provided table along dimension based on split_value.
         """
         left_table, right_table, null_table = table.split(dimension, split_value)
-        for item in null_table.get_items():
-            random.choice([left_table, right_table]).insert(item)
+        null_table.random_split(left_table, right_table)
         
         if left_table.count() == 0 or right_table.count() == 0:
             score = table.entropy(self.target) # score will be unchanged

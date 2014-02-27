@@ -70,7 +70,7 @@ class DecisionTreeFactoryWorker(webapp2.RequestHandler):
         dimensions = ts.get_dimensions()
         dimension = dimensions[0]
         _LOG.info('dimension: %s --> %s' % (str(dimension), str(dimension.get().name)))
-        statistics = ts.statistics(dimension)
+        statistics = ts.entropy(dimension)
             
         _LOG.info('--------- tree factory completed')
     
