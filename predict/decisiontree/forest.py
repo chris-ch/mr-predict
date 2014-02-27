@@ -24,7 +24,7 @@ class RandomForest(object):
     def __init__(self):
         self.trees = []
 
-    def set_training_data(self, table, target, inclusion_ratio=.75,
+    def set_training_data(self, table, target, inclusion_ratio=.1,
                  exclude=[], min_count=None, min_gain=0.0,
                  split_sampling=50,
                  dimension_significance_threshold=0.5

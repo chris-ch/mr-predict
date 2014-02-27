@@ -33,7 +33,8 @@ class DecisionTreeFactory(object):
         self.samples_split_size = samples_split_size
         self.dimensions = [dim for dim in self.table.get_dimensions()
                       if dim != self.target and dim not in self.exclude]
-        self.dimensions_split_size = min(int(inclusion_ratio * len(self.dimensions)), 1)
+        self.dimensions_split_size = max(int(inclusion_ratio * len(self.dimensions)), 1)
+        _LOG.info('the algorithm will be testing %d dimensions at each node for the best split' % self.dimensions_split_size)
         self.dimension_significance_threshold = dimension_significance_threshold
 
     def create(self):

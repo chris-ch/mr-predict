@@ -141,7 +141,7 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--timeout-min',
         type=int,
         default=600,
-        help='forces processors to stop after tiemout in minutes')
+        help='forces processors to stop after timeout in minutes')
 
     parser.add_argument('-x', '--min-leaf-size',
         type=int,
