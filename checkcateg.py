@@ -167,15 +167,7 @@ def main(filename=None):
         
     keepers, unique_columns, headers, stats = csv_statistics(csvfile, has_header, categories_limit, filename=filename, keepers=('loss', ))
     
-    for key in stats:
-        stat = stats[key]
-        print key, (stat[MIN], stat[MAX], stat[NA], len(stat[UNIQUE]))
-        
-    for h in headers:
-        if h not in unique_columns:
-            print h
-    
-    #generate_output(csvfile, has_header, categories_limit, keepers, unique_columns, headers, stats)
+    generate_output(csvfile, has_header, categories_limit, keepers, unique_columns, headers, stats)
     
 if __name__ == '__main__':
 	filename = None
