@@ -172,7 +172,9 @@ class TrainingSet(object):
 
     def _create_child_table(self):
         ts = TrainingSet()
-        ts.set_dimensions(self.get_dimensions())
+        # inheriting parent data
+        ts._dimensions = self._dimensions
+        ts._index = self._index
         ts._output_sampling = self._output_sampling
         ts._output_min = self._output_min
         ts._output_max = self._output_max
