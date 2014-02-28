@@ -9,6 +9,20 @@ from collections import defaultdict
 
 from predict.decisiontree import tools
 
+def as_float(s):
+    try:
+        v = float(s)
+        return v
+    except ValueError:
+        return None
+        
+def as_int(s):
+    try:
+        v = int(s)
+        return v
+    except ValueError:
+        return None
+       
 class TrainingSetFactory(object):
 
     def train_csv(self, input_file, target_name='target', output_sampling=5, ignore_columns=None):
@@ -29,11 +43,11 @@ class TrainingSetFactory(object):
             row = list()
             for index, cell in enumerate(columns[1:]):
                 if index not in header_index: continue
-                try:
-                    row.append(float(cell))
-
-                except ValueError:
-                    row.append(None)
+                value = as_int(cell)
+                if not value:
+                    value = as_float(cell)
+                
+                row.append(value)
 
             ts.insert(row)
 

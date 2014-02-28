@@ -29,6 +29,17 @@ def histogram(x, bins, min_x=None, max_x=None):
         
     return h
 
+def binary_entropy(x):
+    x0 = x[0]
+    count = 0
+    for x_i in x:
+        if x_i == x0:
+            count += 1
+    
+    p = float(count) / len(x)
+    return -elog(p) - elog(1.0 - p)
+        
+
 def entropy(x, min_x=None, max_x=None, accuracy=20):
     """
     Entropy of a list of float values.
@@ -64,8 +75,15 @@ def median(values):
     
 if __name__ == '__main__':
     import random
+    import sys
     ones = [1, 0, 1, 1, 1, 1, 1, 0, 1, 1]
     zeros = [0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+    print entropy(ones, accuracy=2)
+    print binary_entropy(ones)
+    print
+    print entropy(zeros, accuracy=2)
+    print binary_entropy(zeros)
+    print
     print 'both', entropy(ones + zeros, 0, 100)
     print 'ones', entropy(ones, 0, 1)
     print 'zeros', entropy(zeros, 0, 1)
