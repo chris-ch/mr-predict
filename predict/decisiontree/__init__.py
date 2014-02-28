@@ -51,7 +51,7 @@ class DecisionTreeFactory(object):
             _LOG.info('low limit reached (%d), creating new leaf node for value %s' % (table.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
             
-        elif table.entropy(self.target) == 0.:
+        elif table.target_entropy() == 0.:
             leaf_value = table.median(self.target)
             _LOG.info('output identical for all %d elements, creating new leaf node for value %s' % (table.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
@@ -66,7 +66,7 @@ class DecisionTreeFactory(object):
                 node = LeafDecisionNode(leaf_value)
             else:
                 _LOG.debug('-------B2')
-                node_entropy = table.entropy(self.target)
+                node_entropy = table.target_entropy()
                 gain = 1. - best_split['score'] / node_entropy
                 _LOG.info('entropy at current node is %.4f' % (node_entropy))
                 _LOG.info('assessing split %d / %d (score %.4f) creating a gain in entropy of %.1f%%' % (best_split['left_table'].count(), best_split['right_table'].count(), best_split['score'], 100.0 * gain))
@@ -130,12 +130,12 @@ class DecisionTreeFactory(object):
         null_table.random_split(left_table, right_table)
         
         if left_table.count() == 0 or right_table.count() == 0:
-            score = table.entropy(self.target) # score will be unchanged
+            score = table.target_entropy() # score left unchanged
             
         else:
             alpha = float(left_table.count()) / table.count()
-            left_entropy = left_table.entropy(self.target)
-            right_entropy = right_table.entropy(self.target)
+            left_entropy = left_table.target_entropy()
+            right_entropy = right_table.target_entropy()
             # we try to minimize entropy as a whole
             # thanks to the k weighting, if one of the sets has a higher entropy
             # the split is still acceptable if the corresponding number of elements

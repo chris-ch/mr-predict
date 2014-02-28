@@ -57,7 +57,8 @@ class TrainingSetFactory(object):
 
             ts.insert(row)
 
-        ts.end_insert(target_name, output_sampling, binary_output=len(output_categories) == 2)
+        is_binary_output = len(output_categories) == 2
+        ts.end_insert(target_name, output_sampling, binary_output=is_binary_output)
         print 'output categories', output_categories
         _LOG.info('training set: %d samples and %d dimensions loaded' % (ts.count(), len(header)))
         return ts
@@ -108,11 +109,13 @@ class TrainingSet(object):
         self._items = list()
         # caching
         self._list_not_null = dict()
-        self._entropies = dict()
+        self._entropy = None
         self._medians = dict()
         self._output_min = None
         self._output_max = None
         self._output_sampling = None
+        self._output_column = None
+        self._binary_output = False
 
     def _get_list_not_null(self, dim):
         """
@@ -142,21 +145,28 @@ class TrainingSet(object):
             
         return self._medians[dim]
 
-    def _get_entropy(self, dim):
+    def target_entropy(self):
         """
         Computes the statistics (median, entropy) for a dimension
         """
-        if not self._entropies.has_key(dim):
-            values = self._get_list_not_null(dim)
+        if not self._entropy:
+            values = self._get_list_not_null(self._output_column)
             if len(values) == 0:
                 entropy = None
 
             else:
-                entropy = tools.entropy(values, self._output_min, self._output_max, accuracy=self._output_sampling)
+                if self._binary_output:
+                    entropy = tools.binary_entropy(values)
+                    
+                else:
+                    entropy = tools.entropy(values,
+                            self._output_min,
+                            self._output_max,
+                            accuracy=self._output_sampling)
                 
-            self._entropies[dim] = entropy
+            self._entropy = entropy
             
-        return self._entropies[dim]
+        return self._entropy
 
     def _get_items(self):
         return self._items
@@ -167,7 +177,8 @@ class TrainingSet(object):
         ts._output_sampling = self._output_sampling
         ts._output_min = self._output_min
         ts._output_max = self._output_max
-        self._binary_output = False
+        ts._output_column = self._output_column
+        ts._binary_output = self._binary_output
         return ts
 
     def set_dimensions(self, dimensions):
@@ -179,6 +190,7 @@ class TrainingSet(object):
         self._items.append(entry)
 
     def end_insert(self, output_column, output_sampling, binary_output=False):
+        _LOG.info('detected binary output')
         output_index = self._index[output_column]
         
         def items():
@@ -191,6 +203,7 @@ class TrainingSet(object):
         _LOG.info('output max = %s' % self._output_max)
         self._output_sampling = output_sampling
         self._binary_output = binary_output
+        self._output_column = output_column
 
     def fetch(self, item, dim):
         return item[self._index[dim]]
@@ -212,9 +225,6 @@ class TrainingSet(object):
         Computes the median for a dimension
         """
         return self._get_median(dim)
-
-    def entropy(self, dim):
-        return self._get_entropy(dim)
 
     def sample_measures(self, dimension, sample_size):
         """
