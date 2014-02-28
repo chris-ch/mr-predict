@@ -38,7 +38,9 @@ class TrainingSetFactory(object):
         header_index = set([index for index, label in enumerate(first_row) if label not in ignore_columns])
          
         assert target_name in header, 'target column "%s" is missing in input dataset' % target_name
+        target_index = first_row.index(target_name)
         ts.set_dimensions(header)
+        output_categories = set()
         for columns in input_data:
             row = list()
             for index, cell in enumerate(columns[1:]):
@@ -47,11 +49,16 @@ class TrainingSetFactory(object):
                 if not value:
                     value = as_float(cell)
                 
+                if len(output_categories) < 3:
+                    if index == target_index:
+                        output_categories.add(value)
+                    
                 row.append(value)
 
             ts.insert(row)
 
-        ts.end_insert(target_name, output_sampling)
+        ts.end_insert(target_name, output_sampling, binary_output=len(output_categories) == 2)
+        print 'output categories', output_categories
         _LOG.info('training set: %d samples and %d dimensions loaded' % (ts.count(), len(header)))
         return ts
 
@@ -101,7 +108,8 @@ class TrainingSet(object):
         self._items = list()
         # caching
         self._list_not_null = dict()
-        self._statistics = dict()
+        self._entropies = dict()
+        self._medians = dict()
         self._output_min = None
         self._output_max = None
         self._output_sampling = None
@@ -118,22 +126,37 @@ class TrainingSet(object):
             
         return self._list_not_null[dim]
 
-    def _get_statistics(self, dim):
+    def _get_median(self, dim):
         """
         Computes the statistics (median, entropy) for a dimension
         """
-        if not self._statistics.has_key(dim):
+        if not self._medians.has_key(dim):
             values = self._get_list_not_null(dim)
             if len(values) == 0:
-                (median, entropy) = (None, None)
+                median = None
 
             else:
                 median = tools.median(values)
+                
+            self._medians[dim] = median
+            
+        return self._medians[dim]
+
+    def _get_entropy(self, dim):
+        """
+        Computes the statistics (median, entropy) for a dimension
+        """
+        if not self._entropies.has_key(dim):
+            values = self._get_list_not_null(dim)
+            if len(values) == 0:
+                entropy = None
+
+            else:
                 entropy = tools.entropy(values, self._output_min, self._output_max, accuracy=self._output_sampling)
                 
-            self._statistics[dim] = (median, entropy)
+            self._entropies[dim] = entropy
             
-        return self._statistics[dim]
+        return self._entropies[dim]
 
     def _get_items(self):
         return self._items
@@ -144,6 +167,7 @@ class TrainingSet(object):
         ts._output_sampling = self._output_sampling
         ts._output_min = self._output_min
         ts._output_max = self._output_max
+        self._binary_output = False
         return ts
 
     def set_dimensions(self, dimensions):
@@ -154,7 +178,7 @@ class TrainingSet(object):
     def insert(self, entry):
         self._items.append(entry)
 
-    def end_insert(self, output_column, output_sampling):
+    def end_insert(self, output_column, output_sampling, binary_output=False):
         output_index = self._index[output_column]
         
         def items():
@@ -166,6 +190,7 @@ class TrainingSet(object):
         _LOG.info('output min = %s' % self._output_min)
         _LOG.info('output max = %s' % self._output_max)
         self._output_sampling = output_sampling
+        self._binary_output = binary_output
 
     def fetch(self, item, dim):
         return item[self._index[dim]]
@@ -186,10 +211,10 @@ class TrainingSet(object):
         """
         Computes the median for a dimension
         """
-        return self._get_statistics(dim)[0]
+        return self._get_median(dim)
 
     def entropy(self, dim):
-        return self._get_statistics(dim)[1]
+        return self._get_entropy(dim)
 
     def sample_measures(self, dimension, sample_size):
         """
