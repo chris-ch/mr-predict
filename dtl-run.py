@@ -89,7 +89,7 @@ def main(args):
                     res_value = float(res_row[1])
                 
                 mean_abs_error += abs(ref_value - res_value)
-
+                
             mean_abs_error /= float(samples_count)
             msg_template = 'cheking results: mean absolute error = %.2f on a total of %d samples'
             logging.info(msg_template % (mean_abs_error, samples_count))

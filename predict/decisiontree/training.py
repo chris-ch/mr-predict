@@ -59,7 +59,6 @@ class TrainingSetFactory(object):
 
         is_binary_output = len(output_categories) == 2
         ts.end_insert(target_name, output_sampling, binary_output=is_binary_output)
-        print 'output categories', output_categories
         _LOG.info('training set: %d samples and %d dimensions loaded' % (ts.count(), len(header)))
         return ts
 
