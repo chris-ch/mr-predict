@@ -145,8 +145,7 @@ class DecisionTreeFactory(object):
         split = {
             'score': score,
             'left_table': left_table,
-            'right_table': right_table,
-            'null_table': null_table
+            'right_table': right_table
         }
         return split
 
