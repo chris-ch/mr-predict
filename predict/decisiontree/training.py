@@ -191,7 +191,9 @@ class TrainingSet(object):
         self._items.append(entry)
 
     def end_insert(self, output_column, output_sampling, binary_output=False):
-        _LOG.info('detected binary output')
+        if binary_output:
+            _LOG.info('detected binary output')
+            
         output_index = self._index[output_column]
         
         def items():
