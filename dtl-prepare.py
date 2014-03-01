@@ -2,7 +2,6 @@ import random
 import logging
 import argparse
 import csv
-import codecs
 
 def file_len(f):
     for i, l in enumerate(f):
@@ -13,7 +12,7 @@ def file_len(f):
 
 def main(args):
     # splits the input file in various buckets for testing quality of training
-    input_file = codecs.open(args.csv_input_file, 'rU', 'utf-16')
+    input_file = open(args.csv_input_file, 'rb')
     
     input_file_size = file_len(input_file)
 
