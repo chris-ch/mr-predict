@@ -35,6 +35,10 @@ def config_logging(level):
 
 def main(args):
     config_logging(args.log_level)
+    
+    options = ['--%s %s' % (option, vars(args)[option]) for option in vars(args).keys()]
+    logging.getLogger('training').info('running with options: %s' % ' '.join(options))
+    
     workers_count = args.multiprocessing
     
     ignored = list()
@@ -112,7 +116,7 @@ def create_tree(log_level, csv_input_file, target_column, min_leaf_size,
     return output.getvalue()
     
 if __name__ == '__main__':
-
+    
     parser = argparse.ArgumentParser(description='Generates a Random Forest',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('csv_input_file',
