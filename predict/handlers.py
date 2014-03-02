@@ -17,6 +17,7 @@ import jsonrpc
 import settings
 
 from predict import models
+from predict.decisiontree.forest import RandomForest
 
 _LOG = logging.getLogger('predict.handlers')
 
@@ -65,14 +66,13 @@ class DecisionTreeFactoryWorker(webapp2.RequestHandler):
         context = models.TrainingContext.query(
             models.TrainingContext.user_id == user_id, 
             models.TrainingContext.name == context_name).get()
-        ts = NDBTrainingSet(context)
-        ts.start()
-        dimensions = ts.get_dimensions()
-        dimension = dimensions[0]
-        _LOG.info('dimension: %s --> %s' % (str(dimension), str(dimension.get().name)))
-        statistics = ts.entropy(dimension)
-            
-        _LOG.info('--------- tree factory completed')
+        ts = NDBTrainingSet(context, 'loss', 5)
+        forest = RandomForest()
+        forest.set_training_data(ts, 'loss', 
+            min_count=5, split_sampling=50)
+        forest.grow_trees(1)
+        _LOG.info('built forest')
+        
     
 class MainHandler(webapp2.RequestHandler):
     

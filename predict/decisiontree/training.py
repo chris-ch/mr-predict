@@ -144,6 +144,9 @@ class TrainingSet(object):
             
         return self._medians[dim]
 
+    def check_column(self, column_name):
+        return column_name in self.get_dimensions()
+        
     def target_entropy(self):
         """
         Computes the statistics (median, entropy) for a dimension
@@ -207,9 +210,6 @@ class TrainingSet(object):
         self._output_sampling = output_sampling
         self._binary_output = binary_output
         self._output_column = output_column
-
-    def fetch(self, item, dim):
-        return item[self._index[dim]]
 
     def count(self):
         """Counts the number of rows in the table."""
@@ -283,7 +283,7 @@ class TrainingSet(object):
             row_data = dict()
             row_data['id'] = item_id
             for dim in dimensions:
-                row_data[dim] = self.fetch(item, dim)
+                row_data[dim] = item[self._index[dim]]
 
             csv_writer.writerow(row_data)
 

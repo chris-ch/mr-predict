@@ -41,7 +41,7 @@ class RandomForest(object):
         @param split_sampling: number of values to sample when considering a new split on an attribute
 
         """
-        assert target in table.get_dimensions(), 'target column "%s" is missing in input dataset' % target
+        assert table.check_column(target), 'target column "%s" is missing in input dataset' % target
         _LOG.debug('building forest using new training data')
         self.table = table
         table_size = table.count()

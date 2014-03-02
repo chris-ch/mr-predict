@@ -23,7 +23,7 @@ class DecisionTreeFactory(object):
         @param samples_split_size: number of values to sample when considering a new split on a dimension
         @param dimension_significance_threshold: ratio of non-null values considered as significant in a given dimension
         """
-        assert target in table.get_dimensions(), 'target column "%s" is missing in input dataset' % target
+        assert table.check_column(target), 'target column "%s" is missing in input dataset' % target
         self.table = table
         self.exclude = exclude
         self.target = target

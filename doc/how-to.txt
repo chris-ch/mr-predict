@@ -6,8 +6,8 @@ The following files need to be customized. Places requiring edition are marked w
 config.py:
 
 - secret key (can be generated using script indicated in comments)
-- endpoint client ID
+- endpoint client ID from https://code.google.com/apis/console (API access)
 
 client_secrets.json:
-- whole file
+- whole file from https://code.google.com/apis/console (API access--> download JSON)
 

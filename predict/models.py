@@ -39,15 +39,10 @@ class TrainingContext(ndb.Model):
 
         context.key.delete()
         
-    @classmethod
-    def get_or_create(cls, name, source_filename='unspecified'):
-        context = cls(name=name, source_filename=source_filename)
-        context.put()
-        
     def add_dimensions(self, names):
         dimensions = list()
-        for name in names:
-            dimensions.append(Dimension.make(name, context_key=self.key))
+        for index, name in enumerate(names):
+            dimensions.append(Dimension.make(name, index, context_key=self.key))
             self.dimensions_count += 1
         
         ndb.put_multi(dimensions)
@@ -81,18 +76,17 @@ class Dimension(ndb.Model):
     Represents one characteristic of a profile.
     """
     name = ndb.StringProperty(required=True)
+    index = ndb.IntegerProperty(required=True)
     context = ndb.KeyProperty(kind=TrainingContext)
     
     @classmethod
-    def make(cls, name, context_key):
-        new_dimension = Dimension(name=name, context=context_key)
+    def make(cls, name, index, context_key):
+        new_dimension = Dimension(name=name, index=index, context=context_key)
         return new_dimension
         
 class Measure(ndb.Model):
+    value = ndb.FloatProperty(required=False)
     
-    value = ndb.FloatProperty(required=True, indexed=False)
-    dimension = ndb.KeyProperty(kind=Dimension, repeated=False)
-
 class Sample(ndb.Model):
     """
     Represents one profile in the training universe.
@@ -105,24 +99,22 @@ class Sample(ndb.Model):
     def make(cls, sample_id, context_key):
         new_sample = Sample(sample_id=sample_id, context=context_key)
         return new_sample
-        
+
 def create_row(row, context_key, dimensions):
     sample_id = row[0]
     new_sample = Sample.make(sample_id, context_key)
-    measures = create_measures(dimensions, row[1:])
-    new_sample.measures = measures
+    new_sample.measures = create_measures(dimensions, row[1:])
     return new_sample
 
 def create_measures(dimensions, row):
     new_measures = list()
-    for count, cell in enumerate(row):
+    for cell in row:
         try:
             value = float(cell)
-            new_measure = Measure(value=value, dimension=dimensions[count].key)
-            new_measures.append(new_measure)
+            new_measures.append(Measure(value=value))
             
         except ValueError:
-            _LOG.debug('failed to convert value "%s" (ignoring)' % cell)
+            new_measures.append(Measure(value=None))
             
     return new_measures
 
