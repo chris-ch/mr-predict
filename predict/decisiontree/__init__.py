@@ -78,24 +78,16 @@ class DecisionTreeFactory(object):
                     
                 else:
                     _LOG.debug('-------C2')
-                    if best_split['left_table'].count() == 0 or best_split['right_table'].count() == 0:
-                        _LOG.debug('-------D1')
-                        leaf_value = table.median(self.target)
-                        _LOG.info('all elements on a single side, creating new leaf node for %d elements for value %s' % (table.count(), leaf_value))
-                        node = LeafDecisionNode(leaf_value)
-                        
-                    else:
-                        _LOG.debug('-------D2')
-                        _LOG.info('assessment succesful: creating split')
-                        _LOG.info('creating left subnode for %d elements' % (best_split['left_table'].count()))
-                        left_node = self._load_node(best_split['left_table'])
-                        _LOG.info('creating right subnode for %d elements' % (best_split['right_table'].count()))
-                        right_node = self._load_node(best_split['right_table'])
-                        node = DecisionNode(split_value=best_value,
-                                split_dimension=best_dimension,
-                                left_node=left_node,
-                                right_node=right_node
-                                )
+                    _LOG.info('assessment succesful: creating split')
+                    _LOG.info('creating left subnode for %d elements' % (best_split['left_table'].count()))
+                    left_node = self._load_node(best_split['left_table'])
+                    _LOG.info('creating right subnode for %d elements' % (best_split['right_table'].count()))
+                    right_node = self._load_node(best_split['right_table'])
+                    node = DecisionNode(split_value=best_value,
+                            split_dimension=best_dimension,
+                            left_node=left_node,
+                            right_node=right_node
+                            )
 
         return node
 
@@ -136,10 +128,10 @@ class DecisionTreeFactory(object):
             alpha = float(left_table.count()) / table.count()
             left_entropy = left_table.target_entropy()
             right_entropy = right_table.target_entropy()
-            # we try to minimize entropy as a whole
-            # thanks to the k weighting, if one of the sets has a higher entropy
-            # the split is still acceptable if the corresponding number of elements
-            # is lower than in the other set
+            # we try to minimize global entropy
+            # so even if one of the 2 sets has a higher entropy
+            # the split is still acceptable if the corresponding
+            # number of elements is lower than in the other set
             score = alpha * left_entropy + (1.0 - alpha) * right_entropy
         
         split = {
