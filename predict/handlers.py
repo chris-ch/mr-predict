@@ -66,7 +66,8 @@ class DecisionTreeFactoryWorker(webapp2.RequestHandler):
         context = models.TrainingContext.query(
             models.TrainingContext.user_id == user_id, 
             models.TrainingContext.name == context_name).get()
-        ts = NDBTrainingSet(context, 'loss', 5)
+        ts = NDBTrainingSet(context, 5)
+        ts.setup_output('loss')
         forest = RandomForest()
         forest.set_training_data(ts, 'loss', 
             min_count=5, split_sampling=50)

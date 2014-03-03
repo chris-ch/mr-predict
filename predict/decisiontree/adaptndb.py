@@ -16,17 +16,20 @@ class NDBTrainingSet(object):
         Interface to datastore
     """
 
-    def __init__(self, context, output_column, output_sampling):
+    def __init__(self, context, output_sampling):
         self._context = context
-        self._dimensions = list()
+        self._dimensions = None
+        self._items = None
+        self._list_not_null = dict()
+        self._entropy = None
+        self._medians = dict()
+        self._output_sampling = output_sampling
+
+    def setup_output(self, output_column):
         self._items = (models.Sample.query(
                 models.Sample.context == self._context.key
                 ).fetch(keys_only=True)
                 )
-        self._list_not_null = dict()
-        self._entropy = None
-        self._medians = dict()
-        
         self._dimensions = models.Dimension.query(
             models.Dimension.context == self._context.key
             ).fetch(keys_only=True)
@@ -60,7 +63,6 @@ class NDBTrainingSet(object):
             
         _LOG.info('output min = %s' % self._output_min)
         _LOG.info('output max = %s' % self._output_max)
-        self._output_sampling = output_sampling
 
     def get_dimensions(self):
         """Gets all defined dimensions"""
@@ -135,14 +137,14 @@ class NDBTrainingSet(object):
         return self.fetch_index(item, index)
 
     def _create_child_table(self):
-        ts = NDBTrainingSet()
+        ts = NDBTrainingSet(self._context, self._output_sampling)
         # inheriting parent data
+        ts._output_column = self._output_column
         ts._dimensions = self._dimensions
+        ts._items = list()
         ts._index = self._index
-        ts._output_sampling = self._output_sampling
         ts._output_min = self._output_min
         ts._output_max = self._output_max
-        ts._output_column = self._output_column
         ts._binary_output = self._binary_output
         return ts
 
@@ -156,11 +158,12 @@ class NDBTrainingSet(object):
         for item in self._get_items():
             random.choice([set_left, set_right]).insert(item)
 
-    def median(self, dim):
+    def median(self, dim_name):
         """
         Computes the median for a dimension
         """
-        return self._get_median(dim)
+        dim = models.Dimension.query(models.name == dim_name).get()
+        return self._get_median(dim.key)
 
     def sample_measures(self, dimension, sample_size):
         """
@@ -186,12 +189,11 @@ class NDBTrainingSet(object):
         left_table = self._create_child_table()
         right_table = self._create_child_table()
         null_table = self._create_child_table()
-        index = self._index[dimension]
         for entry in self._get_items():
-            if entry[index] is None:
+            if self.fetch_dim_key(entry, dimension) is None:
                 null_table.insert(entry)
                 
-            elif entry[index] <= split_value:
+            elif self.fetch_dim_key(entry, dimension) <= split_value:
                 left_table.insert(entry)
 
             else:
