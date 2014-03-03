@@ -47,12 +47,12 @@ class DecisionTreeFactory(object):
         @param table: training subset at the node level
         """
         if table.count() < self.min_items_count:
-            leaf_value = table.median(self.target)
+            leaf_value = table.target_median()
             _LOG.info('low limit reached (%d), creating new leaf node for value %s' % (table.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
             
         elif table.target_entropy() == 0.:
-            leaf_value = table.median(self.target)
+            leaf_value = table.target_median()
             _LOG.info('output identical for all %d elements, creating new leaf node for value %s' % (table.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
         
@@ -61,7 +61,7 @@ class DecisionTreeFactory(object):
             best_split, best_dimension, best_value = self._select_split(self.dimensions, table)
             if best_split is None:
                 _LOG.debug('-------B1')
-                leaf_value = table.median(self.target)
+                leaf_value = table.target_median()
                 _LOG.info('no convenient split found, creating new leaf node for %d elements for value %s' % (table.count(), leaf_value))
                 node = LeafDecisionNode(leaf_value)
             else:
@@ -72,7 +72,7 @@ class DecisionTreeFactory(object):
                 _LOG.info('assessing split %d / %d (score %.4f) creating a gain in entropy of %.1f%%' % (best_split['left_table'].count(), best_split['right_table'].count(), best_split['score'], 100.0 * gain))
                 if gain <= self.min_split_gain:
                     _LOG.debug('-------C1')
-                    leaf_value = table.median(self.target)
+                    leaf_value = table.target_median()
                     _LOG.info('gain too low, creating new leaf node for %d elements for value %s' % (table.count(), leaf_value))
                     node = LeafDecisionNode(leaf_value)
                     

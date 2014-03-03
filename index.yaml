@@ -15,6 +15,11 @@ indexes:
   - name: context
   - name: name
 
+- kind: Sample
+  properties:
+  - name: context
+  - name: index
+
 - kind: TrainingContext
   properties:
   - name: user_id

@@ -41,8 +41,8 @@ class TrainingContext(ndb.Model):
         
     def add_dimensions(self, names):
         dimensions = list()
-        for index, name in enumerate(names):
-            dimensions.append(Dimension.make(name, index, context_key=self.key))
+        for name in names:
+            dimensions.append(Dimension.make(name, context_key=self.key))
             self.dimensions_count += 1
         
         ndb.put_multi(dimensions)
@@ -55,66 +55,68 @@ class TrainingContext(ndb.Model):
     def csv_import(self, csv_reader, dimensions):
         counter = 0
         samples = list()
-        measures = 0
-        for row in csv_reader:
-            new_sample = create_row(row, self.key, dimensions)
+        measures = 0            
+        for count, row in enumerate(csv_reader):
+            new_sample = create_row(row, count, self.key, dimensions)
             samples.append(new_sample)
-            counter += 1
-            if counter % 100 == 0:
-                _LOG.info('%d rows processed' % counter)
+            if (count + 1) % 100 == 0:
+                _LOG.info('%d rows processed' % (count + 1))
             
-            measures += len(new_sample.measures)
-            self.measures_count += len(new_sample.measures)
+            self.measures_count += len(dimensions)
             self.samples_count += 1
                 
-        _LOG.info('saving a total of %d elements' % measures)
+        _LOG.info('saving a total of %d elements' % self.measures_count)
         ndb.put_multi(samples)
+        ndb.put_multi(dimensions)
         self.put()
        
+class Measure(ndb.Model):
+    value = ndb.FloatProperty(required=False)
+    
 class Dimension(ndb.Model):
     """
     Represents one characteristic of a profile.
     """
     name = ndb.StringProperty(required=True)
-    index = ndb.IntegerProperty(required=True)
     context = ndb.KeyProperty(kind=TrainingContext)
+    measures = ndb.StructuredProperty(Measure, repeated=True)
     
     @classmethod
-    def make(cls, name, index, context_key):
-        new_dimension = Dimension(name=name, index=index, context=context_key)
-        return new_dimension
+    def make(cls, name, context_key):
+        return Dimension(name=name, context=context_key)
         
-class Measure(ndb.Model):
-    value = ndb.FloatProperty(required=False)
-    
 class Sample(ndb.Model):
     """
     Represents one profile in the training universe.
     """
     sample_id = ndb.StringProperty(required=True)
+    index = ndb.IntegerProperty(required=True)
     context = ndb.KeyProperty(kind=TrainingContext)
-    measures = ndb.StructuredProperty(Measure, repeated=True)
     
     @classmethod
-    def make(cls, sample_id, context_key):
-        new_sample = Sample(sample_id=sample_id, context=context_key)
+    def make(cls, sample_id, index, context_key):
+        new_sample = Sample(sample_id=sample_id, index=index, context=context_key)
         return new_sample
 
-def create_row(row, context_key, dimensions):
+def create_row(row, sample_index, context_key, dimensions):
     sample_id = row[0]
-    new_sample = Sample.make(sample_id, context_key)
-    new_sample.measures = create_measures(dimensions, row[1:])
+    new_sample = Sample.make(sample_id, index=sample_index, context_key=context_key)
+    measures = create_measures(row[1:])
+    for count, dimension in enumerate(dimensions):
+        dimension.measures.append(measures[count])
+        
     return new_sample
 
-def create_measures(dimensions, row):
+def create_measures(row):
     new_measures = list()
     for cell in row:
         try:
             value = float(cell)
-            new_measures.append(Measure(value=value))
             
         except ValueError:
-            new_measures.append(Measure(value=None))
+            value = None
+            
+        new_measures.append(Measure(value=value))
             
     return new_measures
 
