@@ -58,7 +58,8 @@ class TrainingSetFactory(object):
             ts.insert(row)
 
         is_binary_output = len(output_categories) == 2
-        ts.end_insert(target_name, output_sampling, binary_output=is_binary_output)
+        ts.set_binary_output(is_binary_output)
+        ts.setup_output(target_name, output_sampling=output_sampling)
         _LOG.info('training set: %d samples and %d dimensions loaded' % (ts.count(), len(header)))
         return ts
 
@@ -193,9 +194,13 @@ class TrainingSet(object):
     def insert(self, entry):
         self._items.append(entry)
 
-    def end_insert(self, output_column, output_sampling, binary_output=False):
-        if binary_output:
+    def set_binary_output(self, is_binary_output):
+        if is_binary_output:
             _LOG.info('detected binary output')
+            
+        self._binary_output = is_binary_output
+    
+    def setup_output(self, output_column, output_sampling):
             
         output_index = self._index[output_column]
         
@@ -208,7 +213,6 @@ class TrainingSet(object):
         _LOG.info('output min = %s' % self._output_min)
         _LOG.info('output max = %s' % self._output_max)
         self._output_sampling = output_sampling
-        self._binary_output = binary_output
         self._output_column = output_column
 
     def count(self):

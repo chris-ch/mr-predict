@@ -16,16 +16,22 @@ class NDBTrainingSet(object):
         Interface to datastore
     """
 
-    def __init__(self, context, output_sampling):
+    def __init__(self, context):
         self._context = context
         self._dimensions = None
         self._items = None
         self._list_not_null = dict()
         self._entropy = None
         self._medians = dict()
-        self._output_sampling = output_sampling
 
-    def setup_output(self, output_column):
+    def set_binary_output(is_binary_output):
+        if is_binary_output:
+            _LOG.info('detected binary output')
+            
+        self._binary_output = is_binary_output
+    
+    def setup_output(self, output_column, output_sampling):
+        self._output_sampling = output_sampling
         self._items = (models.Sample.query(
                 models.Sample.context == self._context.key
                 ).fetch(keys_only=True)
@@ -57,10 +63,8 @@ class NDBTrainingSet(object):
             if len(output_categories) < 3:
                 output_categories.add(output)
                 
-        self._binary_output = len(output_categories) == 2
-        if self._binary_output:
-            _LOG.info('detected binary output')
-            
+        self.set_binary_output(len(output_categories) == 2)
+        
         _LOG.info('output min = %s' % self._output_min)
         _LOG.info('output max = %s' % self._output_max)
 
@@ -137,7 +141,8 @@ class NDBTrainingSet(object):
         return self.fetch_index(item, index)
 
     def _create_child_table(self):
-        ts = NDBTrainingSet(self._context, self._output_sampling)
+        ts = NDBTrainingSet(self._context)
+        ts.setup_output(self._output_sampling)
         # inheriting parent data
         ts._output_column = self._output_column
         ts._dimensions = self._dimensions
