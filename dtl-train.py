@@ -9,7 +9,7 @@ import cPickle
 
 from predict.decisiontree.forest import RandomForest
 from predict.decisiontree.forest import serialize_forests
-from predict.decisiontree.training import TrainingSetFactory
+from predict.decisiontree.train import TrainingSetFactory
 
 def config_logging(level):
     # create logger

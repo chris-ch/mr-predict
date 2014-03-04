@@ -6,7 +6,7 @@ import logging
 from predict.decisiontree import DecisionTreeFactory
 from predict.decisiontree import LeafDecisionNode
 from predict.decisiontree import DecisionNode
-from training import TrainingSet
+from train import TrainingSet
 
 _LOG = logging.getLogger('training')
 

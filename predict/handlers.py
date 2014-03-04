@@ -64,7 +64,7 @@ class BlobImportWorker(webapp2.RequestHandler):
 class DecisionTreeFactoryWorker(webapp2.RequestHandler):
     
     def post(self):
-        from predict.decisiontree.adaptndb import NDBTrainingSet
+        from predict.decisiontree.ndbtrain import NDBTrainingSet
         _LOG.info('--------- started tree factory')
         user_id = self.request.get('user_id')
         context_name = self.request.get('context_name')
@@ -78,7 +78,6 @@ class DecisionTreeFactoryWorker(webapp2.RequestHandler):
             min_count=5, split_sampling=50)
         forest.grow_trees(1)
         _LOG.info('built forest')
-        
     
 class MainHandler(webapp2.RequestHandler):
     

@@ -10,11 +10,11 @@ _LOG = logging.getLogger('training')
 
 class DecisionTreeFactory(object):
     
-    def __init__(self, table, target, inclusion_ratio,
+    def __init__(self, training_set, target, inclusion_ratio,
                  exclude, min_items_count, min_split_gain,
                  samples_split_size, dimension_significance_threshold):
         """
-        @param table: full training table
+        @param training_set: full training set
         @param target: dimension to learn
         @param inclusion_ratio: fraction of dimensions to use for splitting
         @param exclude: list of dimensions to exclude from learning
@@ -23,8 +23,8 @@ class DecisionTreeFactory(object):
         @param samples_split_size: number of values to sample when considering a new split on a dimension
         @param dimension_significance_threshold: ratio of non-null values considered as significant in a given dimension
         """
-        assert table.check_column(target), 'target column "%s" is missing in input dataset' % target
-        self.table = table
+        assert training_set.check_column(target), 'target column "%s" is missing in input dataset' % target
+        self.training_set = training_set
         self.exclude = exclude
         self.target = target
         min_items_count = max(2, min_items_count) # no need to go below 2
@@ -32,57 +32,57 @@ class DecisionTreeFactory(object):
         _LOG.info('no split on groups below %d samples' % self.min_items_count)
         self.min_split_gain = min_split_gain
         self.samples_split_size = samples_split_size
-        self.dimensions = [dim for dim in self.table.get_dimensions()
+        self.dimensions = [dim for dim in self.training_set.get_dimensions()
                       if dim != self.target and dim not in self.exclude]
         self.dimensions_split_size = max(int(inclusion_ratio * len(self.dimensions)), 1)
         _LOG.info('the algorithm will be testing %d dimensions at each node for the best split' % self.dimensions_split_size)
         self.dimension_significance_threshold = dimension_significance_threshold
 
     def create(self):
-        root = self._load_node(self.table)
+        root = self._create_node(self.training_set)
         return root
 
-    def _load_node(self, table):
+    def _create_node(self, training_set):
         """
-        @param table: training subset at the node level
+        @param training_set: training subset at the node level
         """
-        if table.count() < self.min_items_count:
-            leaf_value = table.target_median()
-            _LOG.info('low limit reached (%d), creating new leaf node for value %s' % (table.count(), leaf_value))
+        if training_set.count() < self.min_items_count:
+            leaf_value = training_set.target_median()
+            _LOG.info('low limit reached (%d), creating new leaf node for value %s' % (training_set.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
             
-        elif table.target_entropy() == 0.:
-            leaf_value = table.target_median()
-            _LOG.info('output identical for all %d elements, creating new leaf node for value %s' % (table.count(), leaf_value))
+        elif training_set.target_entropy() == 0.:
+            leaf_value = training_set.target_median()
+            _LOG.info('output identical for all %d elements, creating new leaf node for value %s' % (training_set.count(), leaf_value))
             node = LeafDecisionNode(leaf_value)
         
         else:
-            _LOG.info('splitting %d elements' % table.count())
-            best_split, best_dimension, best_value = self._select_split(self.dimensions, table)
+            _LOG.info('splitting %d elements' % training_set.count())
+            best_split, best_dimension, best_value = self._select_split(self.dimensions, training_set)
             if best_split is None:
                 _LOG.debug('-------B1')
-                leaf_value = table.target_median()
-                _LOG.info('no convenient split found, creating new leaf node for %d elements for value %s' % (table.count(), leaf_value))
+                leaf_value = training_set.target_median()
+                _LOG.info('no convenient split found, creating new leaf node for %d elements for value %s' % (training_set.count(), leaf_value))
                 node = LeafDecisionNode(leaf_value)
             else:
                 _LOG.debug('-------B2')
-                node_entropy = table.target_entropy()
+                node_entropy = training_set.target_entropy()
                 gain = 1. - best_split['score'] / node_entropy
                 _LOG.info('entropy at current node is %.4f' % (node_entropy))
-                _LOG.info('assessing split %d / %d (score %.4f) creating a gain in entropy of %.1f%%' % (best_split['left_table'].count(), best_split['right_table'].count(), best_split['score'], 100.0 * gain))
+                _LOG.info('assessing split %d / %d (score %.4f) creating a gain in entropy of %.1f%%' % (best_split['left_ts'].count(), best_split['right_ts'].count(), best_split['score'], 100.0 * gain))
                 if gain <= self.min_split_gain:
                     _LOG.debug('-------C1')
-                    leaf_value = table.target_median()
-                    _LOG.info('gain too low, creating new leaf node for %d elements for value %s' % (table.count(), leaf_value))
+                    leaf_value = training_set.target_median()
+                    _LOG.info('gain too low, creating new leaf node for %d elements for value %s' % (training_set.count(), leaf_value))
                     node = LeafDecisionNode(leaf_value)
                     
                 else:
                     _LOG.debug('-------C2')
                     _LOG.info('assessment succesful: creating split')
-                    _LOG.info('creating left subnode for %d elements' % (best_split['left_table'].count()))
-                    left_node = self._load_node(best_split['left_table'])
-                    _LOG.info('creating right subnode for %d elements' % (best_split['right_table'].count()))
-                    right_node = self._load_node(best_split['right_table'])
+                    _LOG.info('creating left subnode for %d elements' % (best_split['left_ts'].count()))
+                    left_node = self._create_node(best_split['left_ts'])
+                    _LOG.info('creating right subnode for %d elements' % (best_split['right_ts'].count()))
+                    right_node = self._create_node(best_split['right_ts'])
                     node = DecisionNode(split_value=best_value,
                             split_dimension=best_dimension,
                             left_node=left_node,
@@ -91,56 +91,69 @@ class DecisionTreeFactory(object):
 
         return node
 
-    def _select_split(self, tree_dimensions, table):
+    def _select_split(self, tree_dimensions, training_set):
         """ Restricting the dimensions prevents cross-correlation in Random Forests """
         dimensions = random.sample(tree_dimensions, self.dimensions_split_size)
         best_split = None
         best_dimension = None
         best_value = None
         for dimension in dimensions:
-            _LOG.debug('testing split value on dimension %s for max %d samples' % (dimension, self.samples_split_size))
-            for split_value in table.sample_measures(dimension, self.samples_split_size):
-                if split_value is None:
-                    continue
-                    
-                _LOG.debug('testing split value %s' % split_value)
-                split = self._create_split(dimension, split_value, table)
-                _LOG.debug('resulting split %s' % split)
-                if not best_split or split['score'] < best_split['score']:
-                    best_split = split
-                    best_dimension = dimension
-                    best_value = split_value
-                    
+            (dim_split, dim_value) = assess_split(training_set, dimension, self.samples_split_size)
+            if not best_split or dim_split['score'] < best_split['score']:
+                best_split = dim_split
+                best_value = dim_value
+                
         _LOG.debug('keeping best split "%s" (%s)' % (best_dimension, best_value))
         return (best_split, best_dimension, best_value)
-    
-    def _create_split(self, dimension, split_value, table):
-        """
-        Splits the provided table along dimension based on split_value.
-        """
-        left_table, right_table, null_table = table.split(dimension, split_value)
-        null_table.random_split(left_table, right_table)
-        
-        if left_table.count() == 0 or right_table.count() == 0:
-            score = table.target_entropy() # score left unchanged
-            
-        else:
-            alpha = float(left_table.count()) / table.count()
-            left_entropy = left_table.target_entropy()
-            right_entropy = right_table.target_entropy()
-            # we try to minimize global entropy
-            # so even if one of the 2 sets has a higher entropy
-            # the split is still acceptable if the corresponding
-            # number of elements is lower than in the other set
-            score = alpha * left_entropy + (1.0 - alpha) * right_entropy
-        
-        split = {
-            'score': score,
-            'left_table': left_table,
-            'right_table': right_table
-        }
-        return split
 
+def assess_split(training_set, dimension, size):
+    """
+    Assessing the effect of N random splits along dimension.
+    """
+    _LOG.debug('testing split value on dimension %s for %d samples' % (dimension, size))
+    best_split = None
+    best_value = None
+    candidate_values = training_set.sample_measures(dimension, size)
+    for split_value in candidate_values:
+        if split_value is None:
+            continue
+            
+        _LOG.debug('testing split value %s' % split_value)
+        split = create_split(training_set, dimension, split_value)
+        _LOG.debug('resulting split %s' % split)
+        if not best_split or split['score'] < best_split['score']:
+            best_split = split
+            best_value = split_value
+            
+    return best_split, best_value
+    
+def create_split(training_set, dimension, split_value):
+    """
+    Splits the provided set along dimension based on split_value.
+    """
+    left_ts, right_ts, null_ts = training_set.split(dimension, split_value)
+    null_ts.random_split(left_ts, right_ts)
+    
+    if left_ts.count() == 0 or right_ts.count() == 0:
+        score = training_set.target_entropy() # score left unchanged
+        
+    else:
+        alpha = float(left_ts.count()) / training_set.count()
+        left_entropy = left_ts.target_entropy()
+        right_entropy = right_ts.target_entropy()
+        # we try to minimize global entropy
+        # so even if one of the 2 sets has a higher entropy
+        # the split is still acceptable if the corresponding
+        # number of elements is lower than in the other set
+        score = alpha * left_entropy + (1.0 - alpha) * right_entropy
+    
+    split = {
+        'score': score,
+        'left_ts': left_ts,
+        'right_ts': right_ts
+    }
+    return split
+    
 class BaseDecisionNode(object):
     __metaclass__ = abc.ABCMeta
     

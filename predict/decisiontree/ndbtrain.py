@@ -9,7 +9,7 @@ from google.appengine.ext import ndb
 
 from predict import models
 from predict.decisiontree import tools
-from predict.decisiontree.training import BaseTrainingSet
+from predict.decisiontree.train import BaseTrainingSet
 
 class NDBTrainingSet(BaseTrainingSet):
 
@@ -20,6 +20,7 @@ class NDBTrainingSet(BaseTrainingSet):
     def __init__(self, context):
         super(NDBTrainingSet, self).__init__()
         self._context = context
+        self._dimensions_by_key = dict()
 
     def check_column(self, column_name):
         return models.Dimension.query(
@@ -48,7 +49,6 @@ class NDBTrainingSet(BaseTrainingSet):
         ts._output_min = self._output_min
         ts._output_max = self._output_max
         ts._binary_output = self._binary_output
-        ts._items = list()
         return ts
 
     def setup_output(self, output_column_name, output_sampling):
@@ -90,11 +90,17 @@ class NDBTrainingSet(BaseTrainingSet):
 
         """
         sample_size = min(sample_size, self.count())
-        dimension = dim_key.get()
-        samples = [dimension.measures[index] for index in self._get_items()]
-        return random.sample(samples, sample_size)
+        dimension = self._get_dimension_from_key(dim_key)
+        measures = [dimension.measures[index] for index in self._get_items()]
+        return random.sample(measures, sample_size)
 
     def _get_measure(self, item, dim_key):
-        dimension = dim_key.get()
+        dimension = self._get_dimension_from_key(dim_key)
         return dimension.measures[item].value
 
+    def _get_dimension_from_key(self, dim_key):
+        if not self._dimensions_by_key.has_key(dim_key):
+            self._dimensions_by_key[dim_key] = dim_key.get()
+            
+        return self._dimensions_by_key[dim_key]
+        

@@ -1,7 +1,7 @@
 import math
 import argparse
 
-from predict.decisiontree.training import TrainingSetFactory
+from predict.decisiontree.train import TrainingSetFactory
 
 def main(args):
     def in_oblique_rectangle(x0, y0, x1, y1, width, height, rotation=math.pi/3.0):
