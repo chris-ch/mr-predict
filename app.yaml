@@ -48,6 +48,11 @@ handlers:
   login: optional
   secure: optional
   
+- url: /splits/(.*)
+  script: main.app
+  login: optional
+  secure: optional
+  
 - url: .*
   script: main.app
   login: required

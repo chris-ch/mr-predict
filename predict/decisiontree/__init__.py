@@ -98,6 +98,8 @@ class DecisionTreeFactory(object):
         best_dimension = None
         best_value = None
         from google.appengine.api import taskqueue
+        from google.appengine.api import memcache
+        from google.appengine.ext import deferred
         for dimension in dimensions[:1]:
             params = {
                 'training_set': training_set,
@@ -105,15 +107,21 @@ class DecisionTreeFactory(object):
                 'size': self.samples_split_size,
             }
             queue = taskqueue.Queue('splits')
-            task = taskqueue.Task(url='/split/', params=params)
-            queue.add(task)
-            from google.appengine.api import memcache
+            task = taskqueue.Task(url='/splits/', params={'a':'hello', 'b':'world'})
+            queue.add_async(task)
+            #taskqueue.add(url='/splits/',
+            #    queue_name='splits',
+            #    params={'tt':'ggg'}
+            #    )
             memcache.incr('split_counter', initial_value=0)
                    
         while memcache.get('split_counter') > 0:
-            pass
+            _LOG.info('counter=%d' % (memcache.get('split_counter')))
+            import time
+            time.sleep(10)
         
         _LOG.info('finished all splits')
+        return (None, None, None)
         for dimension in dimensions:
             (best_split, best_value) = memcache.get(str(dimension))
             _LOG.info('obtained res %s' % (res))

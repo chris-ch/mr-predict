@@ -25,6 +25,6 @@ queue:
     task_retry_limit: 0
     
 - name: splits
-  rate: 100/s
+  rate: 10/s
   retry_parameters:
     task_retry_limit: 0

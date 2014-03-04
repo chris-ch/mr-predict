@@ -36,7 +36,7 @@ class ApiHandler(RpcHandler):
     def drive_import(self, filename, download_url):
         _LOG.info('importing file with id "%s"' % str(download_url))
         user_id = users.get_current_user().user_id()
-        taskqueue.add(url='/import/gdrive',
+        taskqueue.add(url='/import/gdrive/',
             queue_name='google-drive-import',
             params={
                 'user_id': user_id,
@@ -80,7 +80,7 @@ class ApiHandler(RpcHandler):
         """
         _LOG.info('creating context for key %s' % str(blob_key))
         user_id = users.get_current_user().user_id()
-        taskqueue.add(url='/import/blob',
+        taskqueue.add(url='/import/blob/',
             queue_name='blob-import',
             params={
                 'user_id': user_id,
