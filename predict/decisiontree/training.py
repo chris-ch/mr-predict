@@ -172,6 +172,31 @@ class BaseTrainingSet(object):
             
         return self._entropy
         
+    def split(self, dim_key, split_value):
+        """Split according to a given dimension and a split value.
+        Returns a 3-uple of tables: one for values <= split_value, one for
+        values > split_val and one for undef values of the dimension.
+
+        @param dimension: dimension to split on
+        @param split_value: split value
+
+        """
+        left_table = self._create_child_table()
+        right_table = self._create_child_table()
+        null_table = self._create_child_table()
+        for item in self._get_items():
+            measure = self._get_measure(item, dim_key)
+            if measure is None:
+                null_table.insert(item)
+                
+            elif measure <= split_value:
+                left_table.insert(item)
+
+            else:
+                right_table.insert(item)
+
+        return left_table, right_table, null_table
+
     def _get_items(self):
         return self._items
 
@@ -241,31 +266,10 @@ class TrainingSet(BaseTrainingSet):
         sample_size = min(sample_size, self.count())
         return [item[index] for item in random.sample(self._get_items(), sample_size)]
 
-    def split(self, dim_key, split_value):
-        """Split according to a given dimension and a split value.
-        Returns a 3-uple of tables: one for values <= split_value, one for
-        values > split_val and one for undef values of the dimension.
-
-        @param dimension: dimension to split on
-        @param split_value: split value
-
-        """
-        left_table = self._create_child_table()
-        right_table = self._create_child_table()
-        null_table = self._create_child_table()
+    def _get_measure(self, item, dim_key):
         index = self._index[dim_key]
-        for item in self._get_items():
-            if item[index] is None:
-                null_table.insert(item)
-                
-            elif item[index] <= split_value:
-                left_table.insert(item)
-
-            else:
-                right_table.insert(item)
-
-        return left_table, right_table, null_table
-
+        return item[index]
+        
     def set_dimensions(self, dimensions):
         self._dimensions = dimensions
         for count, dim in enumerate(dimensions):

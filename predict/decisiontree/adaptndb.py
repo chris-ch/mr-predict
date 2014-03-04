@@ -94,28 +94,7 @@ class NDBTrainingSet(BaseTrainingSet):
         samples = [dimension.measures[index] for index in self._get_items()]
         return random.sample(samples, sample_size)
 
-    def split(self, dim_key, split_value):
-        """Split according to a given dimension and a split value.
-        Returns a 3-uple of tables: one for values <= split_value, one for
-        values > split_val and one for undef values of the dimension.
-
-        @param dimension: dimension to split on
-        @param split_value: split value
-
-        """
-        left_table = self._create_child_table()
-        right_table = self._create_child_table()
-        null_table = self._create_child_table()
+    def _get_measure(self, item, dim_key):
         dimension = dim_key.get()
-        for item in self._get_items():
-            if dimension.measures[item].value is None:
-                null_table.insert(item)
-                
-            elif dimension.measures[item].value <= split_value:
-                left_table.insert(item)
-
-            else:
-                right_table.insert(item)
-
-        return left_table, right_table, null_table
+        return dimension.measures[item].value
 
