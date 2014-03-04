@@ -110,7 +110,7 @@ class TrainingSet(object):
         # caching
         self._list_not_null = dict()
         self._entropy = None
-        self._medians = dict()
+        self._median = None
         self._output_min = None
         self._output_max = None
         self._output_sampling = None
@@ -129,48 +129,9 @@ class TrainingSet(object):
             
         return self._list_not_null[dim]
 
-    def _get_median(self, dim):
-        """
-        Computes the statistics (median, entropy) for a dimension
-        """
-        if not self._medians.has_key(dim):
-            values = self._get_list_not_null(dim)
-            if len(values) == 0:
-                median = None
-
-            else:
-                median = tools.median(values)
-                
-            self._medians[dim] = median
-            
-        return self._medians[dim]
-
     def check_column(self, column_name):
         return column_name in self.get_dimensions()
         
-    def target_entropy(self):
-        """
-        Computes the statistics (median, entropy) for a dimension
-        """
-        if not self._entropy:
-            values = self._get_list_not_null(self._output_column)
-            if len(values) == 0:
-                entropy = None
-
-            else:
-                if self._binary_output:
-                    entropy = tools.binary_entropy(values)
-                    
-                else:
-                    entropy = tools.entropy(values,
-                            self._output_min,
-                            self._output_max,
-                            accuracy=self._output_sampling)
-                
-            self._entropy = entropy
-            
-        return self._entropy
-
     def _get_items(self):
         return self._items
 
@@ -227,11 +188,44 @@ class TrainingSet(object):
         """Gets all defined dimensions"""
         return self._dimensions
 
-    def median(self, dim):
+    def target_median(self):
         """
         Computes the median for a dimension
         """
-        return self._get_median(dim)
+        if not self._median:
+            values = self._get_list_not_null(self._output_column)
+            if len(values) == 0:
+                median = None
+
+            else:
+                median = tools.median(values)
+                
+            self._median = median
+            
+        return self._median
+
+    def target_entropy(self):
+        """
+        Computes the statistics (median, entropy) for a dimension
+        """
+        if not self._entropy:
+            values = self._get_list_not_null(self._output_column)
+            if len(values) == 0:
+                entropy = None
+
+            else:
+                if self._binary_output:
+                    entropy = tools.binary_entropy(values)
+                    
+                else:
+                    entropy = tools.entropy(values,
+                            self._output_min,
+                            self._output_max,
+                            accuracy=self._output_sampling)
+                
+            self._entropy = entropy
+            
+        return self._entropy
 
     def sample_measures(self, dimension, sample_size):
         """

@@ -93,6 +93,8 @@ def main(args):
             mean_abs_error /= float(samples_count)
             msg_template = 'cheking results: mean absolute error = %.2f on a total of %d samples'
             logging.info(msg_template % (mean_abs_error, samples_count))
+            
+    logging.info('run completed - check results in file "%s"' % args.output)
 
 if __name__ == '__main__':
 
