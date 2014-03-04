@@ -8,6 +8,7 @@ import predict.services
 _routes = [
     # Background tasks
     (r'/import/blob', predict.handlers.BlobImportWorker),
+    (r'/import/gdrive', predict.handlers.GDriveImportWorker),
     (r'/factory/', predict.handlers.DecisionTreeFactoryWorker),
     
     # Blob uploads

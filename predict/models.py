@@ -53,20 +53,15 @@ class TrainingContext(ndb.Model):
         return self.add_dimensions([column for column in header[1:]])
         
     def csv_import(self, csv_reader, dimensions):
-        counter = 0
-        samples = list()
-        measures = 0            
         for count, row in enumerate(csv_reader):
-            new_sample = create_row(row, count, self.key, dimensions)
-            samples.append(new_sample)
+            create_row(row, count, self.key, dimensions)
             if (count + 1) % 100 == 0:
                 _LOG.info('%d rows processed' % (count + 1))
             
             self.measures_count += len(dimensions)
             self.samples_count += 1
                 
-        _LOG.info('saving a total of %d elements' % self.measures_count)
-        ndb.put_multi(samples)
+        _LOG.info('saving a total of %d elements for %d samples' % (self.measures_count, self.samples_count))
         ndb.put_multi(dimensions)
         self.put()
        
@@ -85,28 +80,11 @@ class Dimension(ndb.Model):
     def make(cls, name, context_key):
         return Dimension(name=name, context=context_key)
         
-class Sample(ndb.Model):
-    """
-    Represents one profile in the training universe.
-    """
-    sample_id = ndb.StringProperty(required=True)
-    index = ndb.IntegerProperty(required=True)
-    context = ndb.KeyProperty(kind=TrainingContext)
-    
-    @classmethod
-    def make(cls, sample_id, index, context_key):
-        new_sample = Sample(sample_id=sample_id, index=index, context=context_key)
-        return new_sample
-
 def create_row(row, sample_index, context_key, dimensions):
-    sample_id = row[0]
-    new_sample = Sample.make(sample_id, index=sample_index, context_key=context_key)
     measures = create_measures(row[1:])
     for count, dimension in enumerate(dimensions):
         dimension.measures.append(measures[count])
         
-    return new_sample
-
 def create_measures(row):
     new_measures = list()
     for cell in row:

@@ -2,34 +2,55 @@
 # -*- coding: utf-8 -*-
 #
 import logging
-_LOG = logging.getLogger('training-ndb')
+_LOG = logging.getLogger('training.ndb')
 import random
 
 from google.appengine.ext import ndb
 
 from predict import models
 from predict.decisiontree import tools
+from predict.decisiontree.training import BaseTrainingSet
 
-class NDBTrainingSet(object):
+class NDBTrainingSet(BaseTrainingSet):
 
     """
         Interface to datastore
     """
 
     def __init__(self, context):
+        super(NDBTrainingSet, self).__init__()
         self._context = context
-        self._dimensions = None
-        self._items = None
-        self._list_not_null = dict()
-        self._entropy = None
-        self._median = None
 
-    def set_binary_output(self, is_binary_output):
-        if is_binary_output:
-            _LOG.info('detected binary output')
+    def check_column(self, column_name):
+        return models.Dimension.query(
+            models.Dimension.context == self._context.key,
+            models.Dimension.name == column_name
+            ).fetch(1) > 0
+
+    def _get_list_not_null(self, dim):
+        """
+        Sorted list of non null values for a specific dimension.
+        """
+        if not self._list_not_null.has_key(dim.key):
+            not_null_items = [dim.measures[index].value
+                for index in self._get_items()
+                if dim.measures[index].value is not None]                                    
+            self._list_not_null[dim.key] = sorted(not_null_items)
             
-        self._binary_output = is_binary_output
-    
+        return self._list_not_null[dim.key]
+
+    def _create_child_table(self):
+        ts = NDBTrainingSet(self._context)
+        # inheriting parent data
+        ts._dimensions = self._dimensions
+        ts._output_column = self._output_column
+        ts._output_sampling = self._output_sampling
+        ts._output_min = self._output_min
+        ts._output_max = self._output_max
+        ts._binary_output = self._binary_output
+        ts._items = list()
+        return ts
+
     def setup_output(self, output_column_name, output_sampling):
         self._output_sampling = output_sampling
         self._output_column = models.Dimension.query(
@@ -59,93 +80,6 @@ class NDBTrainingSet(object):
         
         _LOG.info('output min = %s' % self._output_min)
         _LOG.info('output max = %s' % self._output_max)
-
-    def get_dimensions(self):
-        """Gets all defined dimensions"""
-        return self._dimensions
-        
-    def check_column(self, column_name):
-        return models.Dimension.query(
-            models.Dimension.context == self._context.key,
-            models.Dimension.name == column_name
-            ).fetch(1) > 0
-            
-    def _get_items(self):
-        return self._items
-        
-    def _get_list_not_null(self, dimension):
-        """
-        Sorted list of non null values for a specific dimension.
-        """
-        if not self._list_not_null.has_key(dimension.key):
-            not_null_items = [dimension.measures[index].value
-                for index in self._get_items()
-                if dimension.measures[index].value is not None]                                    
-            self._list_not_null[dimension.key] = sorted(not_null_items)
-            
-        return self._list_not_null[dimension.key]
-
-    def count(self):
-        """Counts the number of rows in the table."""
-        return len(self._get_items())
-
-    def target_median(self):
-        """
-        Computes the median of the output
-        """
-        if self._median is None:
-            values = self._get_list_not_null(self._output_column)
-            if len(values) == 0:
-                median = None
-
-            else:
-                median = tools.median(values)
-                
-            self._median = median
-            
-        return self._median
-        
-    def target_entropy(self):
-        """
-        Computes the statistics (median, entropy) for a dimension
-        """
-        if not self._entropy:
-            values = self._get_list_not_null(self._output_column)
-            if len(values) == 0:
-                entropy = None
-
-            else:
-                if self._binary_output:
-                    entropy = tools.binary_entropy(values)
-                    
-                else:
-                    entropy = tools.entropy(values,
-                            self._output_min,
-                            self._output_max,
-                            accuracy=self._output_sampling)
-                
-            self._entropy = entropy
-            
-        return self._entropy
-        
-    def _create_child_table(self):
-        ts = NDBTrainingSet(self._context)
-        ts._output_sampling = self._output_sampling
-        ts._output_column = self._output_column
-        # inheriting parent data
-        ts._dimensions = self._dimensions
-        ts._items = list()
-        ts._output_min = self._output_min
-        ts._output_max = self._output_max
-        ts._binary_output = self._binary_output
-        return ts
-
-    def insert(self, item):
-        self._items.append(item)
-
-    def random_split(self, set_left, set_right):
-        for item in self._get_items():
-            random.choice([set_left, set_right]).insert(item)
 
     def sample_measures(self, dim_key, sample_size):
         """
@@ -185,6 +119,3 @@ class NDBTrainingSet(object):
 
         return left_table, right_table, null_table
 
-    def __repr__(self):
-        return '[set of %d rows]' % self.count()
-     

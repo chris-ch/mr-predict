@@ -97,17 +97,13 @@ class TrainingSetFactory(object):
 
         return loc_table
 
-class TrainingSet(object):
-
-    """
-        Interface to datastore
-    """
-
+class BaseTrainingSet(object):
+    
     def __init__(self):
-        self._dimensions = list()
-        self._index = dict()
+        self._dimensions = None
         self._items = list()
         # caching
+        self._binary_output = False
         self._list_not_null = dict()
         self._entropy = None
         self._median = None
@@ -115,45 +111,6 @@ class TrainingSet(object):
         self._output_max = None
         self._output_sampling = None
         self._output_column = None
-        self._binary_output = False
-
-    def _get_list_not_null(self, dim):
-        """
-        Sorted list of non null values for a specific dimension.
-        """
-        if not self._list_not_null.has_key(dim):
-            index = self._index[dim]
-            not_null_items = [item[index] for item in self._items
-                if item[index] is not None]                                    
-            self._list_not_null[dim] = sorted(not_null_items)
-            
-        return self._list_not_null[dim]
-
-    def check_column(self, column_name):
-        return column_name in self.get_dimensions()
-        
-    def _get_items(self):
-        return self._items
-
-    def _create_child_table(self):
-        ts = TrainingSet()
-        # inheriting parent data
-        ts._dimensions = self._dimensions
-        ts._index = self._index
-        ts._output_sampling = self._output_sampling
-        ts._output_min = self._output_min
-        ts._output_max = self._output_max
-        ts._output_column = self._output_column
-        ts._binary_output = self._binary_output
-        return ts
-
-    def set_dimensions(self, dimensions):
-        self._dimensions = dimensions
-        for count, dim in enumerate(dimensions):
-            self._index[dim] = count
-    
-    def insert(self, entry):
-        self._items.append(entry)
 
     def set_binary_output(self, is_binary_output):
         if is_binary_output:
@@ -161,20 +118,8 @@ class TrainingSet(object):
             
         self._binary_output = is_binary_output
     
-    def setup_output(self, output_column, output_sampling):
-            
-        output_index = self._index[output_column]
-        
-        def items():
-            for item in self._get_items():
-                yield item[output_index]
-                
-        self._output_min = min(items())
-        self._output_max = max(items())
-        _LOG.info('output min = %s' % self._output_min)
-        _LOG.info('output max = %s' % self._output_max)
-        self._output_sampling = output_sampling
-        self._output_column = output_column
+    def insert(self, item):
+        self._items.append(item)
 
     def count(self):
         """Counts the number of rows in the table."""
@@ -183,16 +128,16 @@ class TrainingSet(object):
     def random_split(self, set_left, set_right):
         for item in self._get_items():
             random.choice([set_left, set_right]).insert(item)
-            
+
     def get_dimensions(self):
         """Gets all defined dimensions"""
         return self._dimensions
 
     def target_median(self):
         """
-        Computes the median for a dimension
+        Computes the median of the output
         """
-        if not self._median:
+        if self._median is None:
             values = self._get_list_not_null(self._output_column)
             if len(values) == 0:
                 median = None
@@ -226,8 +171,65 @@ class TrainingSet(object):
             self._entropy = entropy
             
         return self._entropy
+        
+    def _get_items(self):
+        return self._items
 
-    def sample_measures(self, dimension, sample_size):
+    def __repr__(self):
+        return '[set of %d rows]' % self.count()
+        
+class TrainingSet(BaseTrainingSet):
+
+    """
+        Interface to datastore
+    """
+
+    def __init__(self):
+        super(TrainingSet, self).__init__()
+        self._index = dict()
+
+    def check_column(self, column_name):
+        return column_name in self.get_dimensions()
+        
+    def _get_list_not_null(self, dim):
+        """
+        Sorted list of non null values for a specific dimension.
+        """
+        if not self._list_not_null.has_key(dim):
+            index = self._index[dim]
+            not_null_items = [item[index] for item in self._items
+                if item[index] is not None]                                    
+            self._list_not_null[dim] = sorted(not_null_items)
+            
+        return self._list_not_null[dim]
+
+    def _create_child_table(self):
+        ts = TrainingSet()
+        # inheriting parent data
+        ts._dimensions = self._dimensions
+        ts._output_column = self._output_column
+        ts._output_sampling = self._output_sampling
+        ts._output_min = self._output_min
+        ts._output_max = self._output_max
+        ts._binary_output = self._binary_output
+        ts._index = self._index
+        return ts
+
+    def setup_output(self, output_column_name, output_sampling):
+        self._output_sampling = output_sampling
+        self._output_column = output_column_name
+        output_index = self._index[output_column_name]
+        
+        def items():
+            for item in self._get_items():
+                yield item[output_index]
+                
+        self._output_min = min(items())
+        self._output_max = max(items())
+        _LOG.info('output min = %s' % self._output_min)
+        _LOG.info('output max = %s' % self._output_max)
+
+    def sample_measures(self, dim_key, sample_size):
         """
         Samples uniformly at random from the set of values of a dimension.
 
@@ -235,11 +237,11 @@ class TrainingSet(object):
         @param sample_size: number of values to sample
 
         """
-        index = self._index[dimension]
+        index = self._index[dim_key]
         sample_size = min(sample_size, self.count())
         return [item[index] for item in random.sample(self._get_items(), sample_size)]
 
-    def split(self, dimension, split_value):
+    def split(self, dim_key, split_value):
         """Split according to a given dimension and a split value.
         Returns a 3-uple of tables: one for values <= split_value, one for
         values > split_val and one for undef values of the dimension.
@@ -251,19 +253,24 @@ class TrainingSet(object):
         left_table = self._create_child_table()
         right_table = self._create_child_table()
         null_table = self._create_child_table()
-        index = self._index[dimension]
-        for entry in self._get_items():
-            if entry[index] is None:
-                null_table.insert(entry)
+        index = self._index[dim_key]
+        for item in self._get_items():
+            if item[index] is None:
+                null_table.insert(item)
                 
-            elif entry[index] <= split_value:
-                left_table.insert(entry)
+            elif item[index] <= split_value:
+                left_table.insert(item)
 
             else:
-                right_table.insert(entry)
+                right_table.insert(item)
 
         return left_table, right_table, null_table
 
+    def set_dimensions(self, dimensions):
+        self._dimensions = dimensions
+        for count, dim in enumerate(dimensions):
+            self._index[dim] = count
+    
     def to_csv(self, csv_file, selected=None, excluded=None):
         """
         Careful, that can be huge...
@@ -285,6 +292,4 @@ class TrainingSet(object):
 
             csv_writer.writerow(row_data)
 
-    def __repr__(self):
-        return '[set of %d rows]' % self.count()
-        
+       

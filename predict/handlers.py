@@ -37,7 +37,12 @@ class RpcHandler(jsonrpc.basehandler.BaseHandler):
     @property
     def http(self):
         return self.__http
-        
+
+class GDriveImportWorker(webapp2.RequestHandler):
+    
+    def post(self):
+        _LOG.info('--------- started gdrive import')
+
 class BlobImportWorker(webapp2.RequestHandler):
     
     def post(self):

@@ -105,7 +105,7 @@ angular.module('predict.services', [])
     
     self.driveImport = function (filename, downloadUrl) {
         console.log('importing file id', downloadUrl);
-        return jsonrpc.call('blobstore_upload_url', [ filename, downloadUrl ]);
+        return jsonrpc.call('drive_import', [ filename, downloadUrl ]);
     };
     
 }

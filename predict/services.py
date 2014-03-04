@@ -33,6 +33,30 @@ class ApiHandler(RpcHandler):
         """
         return blobstore.create_upload_url('/blobupload')
             
+    def drive_import(self, filename, download_url):
+        _LOG.info('importing file with id "%s"' % str(download_url))
+        user_id = users.get_current_user().user_id()
+        taskqueue.add(url='/import/gdrive',
+            queue_name='google-drive-import',
+            params={
+                'user_id': user_id,
+                'filename': filename,
+                'download_url': download_url,
+            }
+        )
+        
+    def load_file_names(self):
+        _LOG.info('loading file names')   
+        query = """ mimeType = 'text/csv' and trashed = false """
+        drive = discovery.build('drive', 'v2', http=self.http)
+        response = drive.files().list(q=query).execute()
+        files = [{
+                    'id': meta['id'],
+                    'title': meta['title'],
+                    'downloadUrl': meta['downloadUrl']
+                    } for meta in response['items']]
+        return files
+        
     def list_available_files(self):
         """
         Returns a list of files available in the Blobstore
@@ -64,18 +88,6 @@ class ApiHandler(RpcHandler):
             }
             )
     
-    def load_file_names(self):
-        _LOG.info('loading file names')   
-        query = """ mimeType = 'text/csv' and trashed = false """
-        drive = discovery.build('drive', 'v2', http=self.http)
-        response = drive.files().list(q=query).execute()
-        files = [{
-                    'id': meta['id'],
-                    'title': meta['title'],
-                    'downloadUrl': meta['downloadUrl']
-                    } for meta in response['items']]
-        return files
-        
     def delete_context(self, name):
         _LOG.info('deleting context %s' % name)
         user_id = users.get_current_user().user_id()
@@ -109,16 +121,5 @@ class ApiHandler(RpcHandler):
                 'dimensions_count': context.dimensions_count,
             } for context in contexts]
         
-    def drive_import(self, filename, download_url):
-        _LOG.info('importing file with id "%s"' % str(download_url))
-        user_id = users.get_current_user().user_id()
-        taskqueue.add(url='/import/',
-            queue_name='google-drive-import',
-            params={
-                'user_id': user_id,
-                'filename': filename,
-                'download_url': download_url,
-            }
-            )
         
     
