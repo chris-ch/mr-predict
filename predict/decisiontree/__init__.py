@@ -97,12 +97,31 @@ class DecisionTreeFactory(object):
         best_split = None
         best_dimension = None
         best_value = None
+        from google.appengine.api import taskqueue
+        for dimension in dimensions[:1]:
+            params = {
+                'training_set': training_set,
+                'dimension': dimension,
+                'size': self.samples_split_size,
+            }
+            queue = taskqueue.Queue('splits')
+            task = taskqueue.Task(url='/split/', params=params)
+            queue.add(task)
+            from google.appengine.api import memcache
+            memcache.incr('split_counter', initial_value=0)
+                   
+        while memcache.get('split_counter') > 0:
+            pass
+        
+        _LOG.info('finished all splits')
         for dimension in dimensions:
-            (dim_split, dim_value) = assess_split(training_set, dimension, self.samples_split_size)
-            if not best_split or dim_split['score'] < best_split['score']:
+            (best_split, best_value) = memcache.get(str(dimension))
+            _LOG.info('obtained res %s' % (res))
+            if dim_split and (not best_split or dim_split['score'] < best_split['score']):
                 best_split = dim_split
                 best_value = dim_value
-                
+                best_dimension = dimension
+            
         _LOG.debug('keeping best split "%s" (%s)' % (best_dimension, best_value))
         return (best_split, best_dimension, best_value)
 

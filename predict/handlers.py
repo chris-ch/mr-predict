@@ -61,6 +61,20 @@ class BlobImportWorker(webapp2.RequestHandler):
         new_context.csv_import(reader, dimensions)
         content.close()
         
+class SplitWorker(webapp2.RequestHandler):
+    
+    def post(self):
+        logging.error('Split Worker')
+        from google.appengine.api import memcache
+        training_set = self.request.get('training_set')
+        dimension = self.request.get('dimension')
+        size = self.request.get('size')
+        _LOG.info('split worker: %s, %s, %s' % (training_set, dimension, size))
+        from predit.decisiontree import assess_split
+        (best_split, best_value) = assess_split(training_set, dimension, size)
+        memcache.decr('split_counter')
+        memcache.set(str(dimension), (best_split, best_value))
+        
 class DecisionTreeFactoryWorker(webapp2.RequestHandler):
     
     def post(self):
@@ -70,12 +84,12 @@ class DecisionTreeFactoryWorker(webapp2.RequestHandler):
         context_name = self.request.get('context_name')
         context = models.TrainingContext.query(
             models.TrainingContext.user_id == user_id, 
-            models.TrainingContext.name == context_name).get()
+            models.TrainingContext.name == context_name
+            ).get()
         ts = NDBTrainingSet(context)
         ts.setup_output('loss', output_sampling=5)
         forest = RandomForest()
-        forest.set_training_data(ts, 'loss', 
-            min_count=5, split_sampling=50)
+        forest.set_training_data(ts, 'loss', min_count=5, split_sampling=50)
         forest.grow_trees(1)
         _LOG.info('built forest')
     

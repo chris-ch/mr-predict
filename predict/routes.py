@@ -7,6 +7,7 @@ import predict.services
 
 _routes = [
     # Background tasks
+    (r'/split/', predict.handlers.SplitWorker),
     (r'/import/blob', predict.handlers.BlobImportWorker),
     (r'/import/gdrive', predict.handlers.GDriveImportWorker),
     (r'/factory/', predict.handlers.DecisionTreeFactoryWorker),
