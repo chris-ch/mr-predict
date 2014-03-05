@@ -46,43 +46,36 @@ class DecisionTreeFactory(object):
         """
         @param training_set: training subset at the node level
         """
+        leaf_value = training_set.target_median()
+        set_size = training_set.count()
         if training_set.count() < self.min_items_count:
-            leaf_value = training_set.target_median()
-            _LOG.info('low limit reached (%d), creating new leaf node for value %s' % (training_set.count(), leaf_value))
+            _LOG.info('low limit reached (%d), creating new leaf node for value %s' % (set_size, leaf_value))
             node = LeafDecisionNode(leaf_value)
             
         elif training_set.target_entropy() == 0.:
-            leaf_value = training_set.target_median()
-            _LOG.info('output identical for all %d elements, creating new leaf node for value %s' % (training_set.count(), leaf_value))
+            _LOG.info('output identical for all %d elements, creating new leaf node for value %s' % (set_size, leaf_value))
             node = LeafDecisionNode(leaf_value)
         
         else:
-            _LOG.info('splitting %d elements' % training_set.count())
+            _LOG.info('splitting %d elements' % set_size)
             best_split, best_dimension, best_value = select_split(self.dimensions,
                 training_set,
                 self.dimensions_split_size,
                 self.samples_split_size
                 )
-            #node_split(best_split, best_dimension, best_value, training_set)
             if best_split is None:
-                _LOG.debug('-------B1')
-                leaf_value = training_set.target_median()
-                _LOG.info('no convenient split found, creating new leaf node for %d elements for value %s' % (training_set.count(), leaf_value))
+                _LOG.info('no convenient split found, creating new leaf node for %d elements for value %s' % (set_size, leaf_value))
                 node = LeafDecisionNode(leaf_value)
             else:
-                _LOG.debug('-------B2')
                 node_entropy = training_set.target_entropy()
                 gain = 1. - best_split['score'] / node_entropy
                 _LOG.info('entropy at current node is %.4f' % (node_entropy))
                 _LOG.info('assessing split %d / %d (score %.4f) creating a gain in entropy of %.1f%%' % (best_split['left_ts'].count(), best_split['right_ts'].count(), best_split['score'], 100.0 * gain))
                 if gain <= self.min_split_gain:
-                    _LOG.debug('-------C1')
-                    leaf_value = training_set.target_median()
-                    _LOG.info('gain too low, creating new leaf node for %d elements for value %s' % (training_set.count(), leaf_value))
+                    _LOG.info('gain too low, creating new leaf node for %d elements for value %s' % (set_size, leaf_value))
                     node = LeafDecisionNode(leaf_value)
                     
                 else:
-                    _LOG.debug('-------C2')
                     _LOG.info('assessment succesful: creating split')
                     _LOG.info('creating left subnode for %d elements' % (best_split['left_ts'].count()))
                     left_node = self._create_node(best_split['left_ts'])
@@ -95,41 +88,14 @@ class DecisionTreeFactory(object):
                             )
 
         return node
-
+    
 def select_split(tree_dimensions, training_set, dimensions_split_size, samples_split_size):
     """ Restricting the dimensions prevents cross-correlation in Random Forests """
     dimensions = random.sample(tree_dimensions, dimensions_split_size)
     best_split = None
     best_dimension = None
     best_value = None
-    #from google.appengine.api import taskqueue
-    #from google.appengine.api import memcache
-    #from google.appengine.ext import deferred
-    #for dimension in dimensions[:1]:
-    #    params = {
-    #        'training_set': training_set,
-    #        'dimension': dimension,
-    #        'size': self.samples_split_size,
-    #    }
-    #    queue = taskqueue.Queue('splits')
-    #    task = taskqueue.Task(url='/splits/', params={'a':'hello', 'b':'world'})
-    #    queue.add(task)
-        #taskqueue.add(url='/splits/',
-        #    queue_name='splits',
-        #    params={'tt':'ggg'}
-        #    )
-    #    memcache.incr('split_counter', initial_value=0)
-               
-    #while memcache.get('split_counter') > 0:
-    #    _LOG.info('counter=%d' % (memcache.get('split_counter')))
-    #    import time
-    #    time.sleep(10)
-    #
-    #_LOG.info('finished all splits')
-    #return (None, None, None)
     for dimension in dimensions:
-        #(best_split, best_value) = memcache.get(str(dimension))
-        #(best_split, best_value) = memcache.get(str(dimension))
         (dim_split, dim_value) = assess_split(training_set, dimension, samples_split_size)
         if dim_split and (not best_split or dim_split['score'] < best_split['score']):
             best_split = dim_split
