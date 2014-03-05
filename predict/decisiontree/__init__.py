@@ -58,7 +58,12 @@ class DecisionTreeFactory(object):
         
         else:
             _LOG.info('splitting %d elements' % training_set.count())
-            best_split, best_dimension, best_value = self._select_split(self.dimensions, training_set)
+            best_split, best_dimension, best_value = select_split(self.dimensions,
+                training_set,
+                self.dimensions_split_size,
+                self.samples_split_size
+                )
+            #node_split(best_split, best_dimension, best_value, training_set)
             if best_split is None:
                 _LOG.debug('-------B1')
                 leaf_value = training_set.target_median()
@@ -91,47 +96,48 @@ class DecisionTreeFactory(object):
 
         return node
 
-    def _select_split(self, tree_dimensions, training_set):
-        """ Restricting the dimensions prevents cross-correlation in Random Forests """
-        dimensions = random.sample(tree_dimensions, self.dimensions_split_size)
-        best_split = None
-        best_dimension = None
-        best_value = None
-        from google.appengine.api import taskqueue
-        from google.appengine.api import memcache
-        from google.appengine.ext import deferred
-        for dimension in dimensions[:1]:
-            params = {
-                'training_set': training_set,
-                'dimension': dimension,
-                'size': self.samples_split_size,
-            }
-            queue = taskqueue.Queue('splits')
-            task = taskqueue.Task(url='/splits/', params={'a':'hello', 'b':'world'})
-            queue.add_async(task)
-            #taskqueue.add(url='/splits/',
-            #    queue_name='splits',
-            #    params={'tt':'ggg'}
-            #    )
-            memcache.incr('split_counter', initial_value=0)
-                   
-        while memcache.get('split_counter') > 0:
-            _LOG.info('counter=%d' % (memcache.get('split_counter')))
-            import time
-            time.sleep(10)
+def select_split(tree_dimensions, training_set, dimensions_split_size, samples_split_size):
+    """ Restricting the dimensions prevents cross-correlation in Random Forests """
+    dimensions = random.sample(tree_dimensions, dimensions_split_size)
+    best_split = None
+    best_dimension = None
+    best_value = None
+    #from google.appengine.api import taskqueue
+    #from google.appengine.api import memcache
+    #from google.appengine.ext import deferred
+    #for dimension in dimensions[:1]:
+    #    params = {
+    #        'training_set': training_set,
+    #        'dimension': dimension,
+    #        'size': self.samples_split_size,
+    #    }
+    #    queue = taskqueue.Queue('splits')
+    #    task = taskqueue.Task(url='/splits/', params={'a':'hello', 'b':'world'})
+    #    queue.add(task)
+        #taskqueue.add(url='/splits/',
+        #    queue_name='splits',
+        #    params={'tt':'ggg'}
+        #    )
+    #    memcache.incr('split_counter', initial_value=0)
+               
+    #while memcache.get('split_counter') > 0:
+    #    _LOG.info('counter=%d' % (memcache.get('split_counter')))
+    #    import time
+    #    time.sleep(10)
+    #
+    #_LOG.info('finished all splits')
+    #return (None, None, None)
+    for dimension in dimensions:
+        #(best_split, best_value) = memcache.get(str(dimension))
+        #(best_split, best_value) = memcache.get(str(dimension))
+        (dim_split, dim_value) = assess_split(training_set, dimension, samples_split_size)
+        if dim_split and (not best_split or dim_split['score'] < best_split['score']):
+            best_split = dim_split
+            best_value = dim_value
+            best_dimension = dimension
         
-        _LOG.info('finished all splits')
-        return (None, None, None)
-        for dimension in dimensions:
-            (best_split, best_value) = memcache.get(str(dimension))
-            _LOG.info('obtained res %s' % (res))
-            if dim_split and (not best_split or dim_split['score'] < best_split['score']):
-                best_split = dim_split
-                best_value = dim_value
-                best_dimension = dimension
-            
-        _LOG.debug('keeping best split "%s" (%s)' % (best_dimension, best_value))
-        return (best_split, best_dimension, best_value)
+    _LOG.debug('keeping best split "%s" (%s)' % (best_dimension, best_value))
+    return (best_split, best_dimension, best_value)
 
 def assess_split(training_set, dimension, size):
     """

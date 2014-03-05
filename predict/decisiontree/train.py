@@ -227,7 +227,7 @@ class TrainingSet(BaseTrainingSet):
             self._list_not_null[dim] = sorted(not_null_items)
             
         return self._list_not_null[dim]
-
+        
     def _create_child_table(self):
         ts = TrainingSet()
         # inheriting parent data
@@ -239,7 +239,7 @@ class TrainingSet(BaseTrainingSet):
         ts._binary_output = self._binary_output
         ts._index = self._index
         return ts
-
+        
     def setup_output(self, output_column_name, output_sampling):
         self._output_sampling = output_sampling
         self._output_column = output_column_name
@@ -253,7 +253,7 @@ class TrainingSet(BaseTrainingSet):
         self._output_max = max(items())
         _LOG.info('output min = %s' % self._output_min)
         _LOG.info('output max = %s' % self._output_max)
-
+        
     def sample_measures(self, dim_key, sample_size):
         """
         Samples uniformly at random from the set of values of a dimension.
