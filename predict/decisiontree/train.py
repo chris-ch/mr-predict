@@ -25,7 +25,7 @@ def as_int(s):
        
 class TrainingSetFactory(object):
 
-    def train_csv(self, input_file, target_name='target', output_sampling=5, ignore_columns=None):
+    def train_csv(self, input_file, target_name='target', output_sampling=5, ignore_columns=None, use_columns=None):
         import csv
         _LOG.info('loading training set')
         if ignore_columns is None:
@@ -34,9 +34,10 @@ class TrainingSetFactory(object):
         ts = TrainingSet()
         input_data = csv.reader(input_file, delimiter=',')
         first_row = next(input_data)[1:]
-        header = [label for label in first_row if label not in ignore_columns]
-        header_index = set([index for index, label in enumerate(first_row) if label not in ignore_columns])
-         
+        header = [label for label in first_row
+            if label not in ignore_columns and (use_columns is None or label in use_columns or label == target_name)]
+        header_index = set([index for index, label in enumerate(first_row) 
+            if label not in ignore_columns and (use_columns is None or label in use_columns or label == target_name)])
         assert target_name in header, 'target column "%s" is missing in input dataset' % target_name
         target_index = first_row.index(target_name)
         ts.set_dimensions(header)
