@@ -44,12 +44,17 @@ def main(args):
         with open(args.ignore_columns, 'r') as file_ignore:
             ignored = [line.rstrip() for line in file_ignore]
             
+    used = None
+    if args.use_columns:
+        with open(args.use_columns, 'r') as file_use:
+            used = [line.rstrip() for line in file_use]
+            
     # Single processor
     factory = TrainingSetFactory()
     forests = None
     input_file = args.csv_input_file
     data = factory.train_csv(input_file, target_name=args.target_column, 
-        output_sampling=args.output_sampling, ignore_columns=ignored)
+        output_sampling=args.output_sampling, ignore_columns=ignored, use_columns=used)
     forest = RandomForest()
     forest.set_training_data(data, args.target_column, 
         min_count=args.min_leaf_size, split_sampling=args.split_sampling)
@@ -97,6 +102,10 @@ if __name__ == '__main__':
         type=str,
         help='file containing a list of columns to be ignored')
 
+    parser.add_argument('-u', '--use-columns',
+        type=str,
+        help='file containing the list of columns to look at')
+    
     parser.add_argument('-l', '--log-level',
         type=str,
         default='info',

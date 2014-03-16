@@ -76,7 +76,7 @@ def walk(node, f_node, f_leaf=None):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Runs a Random Forest on a set',
+    parser = argparse.ArgumentParser(description='Runs statistics on a Random Forest',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('-f', '--forest',
